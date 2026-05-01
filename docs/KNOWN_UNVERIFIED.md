@@ -34,16 +34,17 @@ All gvanno helpers (`gvanno_validate_input.py`, `gvanno_vep.py`, `gvanno_vcfanno
 ### Bit-identical output gate
 This smoke test confirms the pipeline runs and produces well-formed output. It does **not** yet confirm the per-row content matches upstream gvanno on the same input. Phase 1 acceptance gate (`zdiff` of the `.pass.tsv.gz` against an upstream gvanno run on the example VCF) still pending.
 
-### BUNDLE_FETCH FASTA prep
-`modules/local/refdata/bundle_fetch.nf` downloads the FASTA but doesn't decompress + bgzip + faidx. Real reference preparation needs a follow-up step that runs inside the gvanno container:
+### BUNDLE_FETCH FASTA prep — IMPLEMENTED, not yet integration-tested
+Implemented as `modules/local/refdata/bundle_prepare.nf` (`BUNDLE_PREPARE`), wired into `PREPARE_REFERENCES` after `BUNDLE_FETCH`. Runs inside the gvanno container; does `gunzip` → `bgzip` → `samtools faidx` on the Ensembl FASTA and places it at `data/<assembly>/.vep/homo_sapiens/<ens>_<asm>/Homo_sapiens.<asm>.dna.primary_assembly.fa.gz`. Idempotent.
 
-```bash
-gunzip Homo_sapiens.<ASM>.dna.primary_assembly.fa.gz
-bgzip Homo_sapiens.<ASM>.dna.primary_assembly.fa
-samtools faidx Homo_sapiens.<ASM>.dna.primary_assembly.fa.gz
-```
+Not yet exercised end-to-end on a fresh `--refdata_mode download` run — the smoke test used a pre-staged bundle. Needs an integration run before v0.1.0.
 
-Should be wired into `BUNDLE_FETCH` (or a new `BUNDLE_FINALIZE` step) before v0.1.0 ships.
+### GitHub Releases mirror — IMPLEMENTED, not yet populated
+`BUNDLE_FETCH` now supports both direct URLs and a chunked-manifest fallback (`<file>.parts.txt`) for any mirror in `params.refdata_url_base`. The chunking strategy targets GitHub's 2 GB per-asset cap.
+
+To populate the mirror, a repo maintainer runs `scripts/publish-refdata-mirror.sh` once per refdata version. The script downloads the bundle from upstream, splits it into 1.9 GB chunks, writes a `.parts.txt` manifest, and uploads everything to the `refdata-<version>` GitHub Release via `gh`. Idempotent.
+
+Until the script runs, the GH mirror URLs in `params.refdata_url_base` return 404 and the pipeline transparently falls back to the upstream Oslo mirror — same behaviour as before.
 
 ### GRCh38
 Smoke test was GRCh37 only. GRCh38 path differences (different fasta filename, different LOFTEE ancestor URL, GENCODE v44 instead of v19) are wired in `conf/genomes.config` but not exercised.

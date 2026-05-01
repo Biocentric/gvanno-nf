@@ -1,11 +1,14 @@
-include { BUNDLE_FETCH  } from '../../modules/local/refdata/bundle_fetch'
-include { BUNDLE_VERIFY } from '../../modules/local/refdata/bundle_verify'
+include { BUNDLE_FETCH   } from '../../modules/local/refdata/bundle_fetch'
+include { BUNDLE_PREPARE } from '../../modules/local/refdata/bundle_prepare'
+include { BUNDLE_VERIFY  } from '../../modules/local/refdata/bundle_verify'
 
 /*
  * Resolves a usable reference bundle.
  *   prestaged: assume params.refdata_dir already holds the bundle (default)
- *   download:  fetch into a Nextflow work dir; user is responsible for moving
- *              the resulting refdata_out/ contents to a permanent location
+ *   download:  fetch + prepare into a Nextflow work dir; user is responsible
+ *              for moving the resulting refdata_out/ contents to a permanent
+ *              location, OR for re-running with --refdata_mode prestaged
+ *              against that location for subsequent annotation runs.
  *
  * If RELEASE_NOTES is missing in prestaged mode we abort with a clear message
  * pointing to -entry PREPARE_REFERENCES + --refdata_mode download.
@@ -26,7 +29,8 @@ workflow PREPARE_REFERENCES {
             params.refdata_url_base,
             params.vep_lof_prediction
         )
-        ch_root = BUNDLE_FETCH.out.root
+        BUNDLE_PREPARE( genome, BUNDLE_FETCH.out.root )
+        ch_root = BUNDLE_PREPARE.out.root
     } else {
         // prestaged
         if ( !refdata_dir_param ) {

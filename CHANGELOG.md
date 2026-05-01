@@ -12,6 +12,11 @@ Fixes during smoke test:
 - Made `VALIDATE_VCF`, `VEP`, `VCFANNO`, `SUMMARISE` modules tolerant of helpers that already produce `.vcf.gz` + `.tbi` (skip redundant bgzip/tabix when output already exists).
 - `FINALIZE_TSV`: stage inputs under non-colliding names; detect that `gvanno_finalize.py` writes gzipped content to a non-`.gz` path and rename rather than re-compress (was producing double-gzipped output).
 
+Reference-data plumbing:
+- New `BUNDLE_PREPARE` module: runs in the gvanno container after `BUNDLE_FETCH`, re-encodes the Ensembl FASTA from plain gzip to BGZF, generates `.fai` + `.gzi` indexes, and places the file at the VEP-expected path inside the cache. Idempotent. Closes the gap that forced manual FASTA prep during the smoke test.
+- `BUNDLE_FETCH` mirrors: now supports a chunked-manifest fallback. For each base URL in `params.refdata_url_base`, it tries the direct file first, then `<file>.parts.txt` + chunk reassembly. Lets a GitHub Releases mirror serve assets that exceed GH's 2 GB per-asset cap.
+- `scripts/publish-refdata-mirror.sh`: one-shot maintainer script that mirrors the upstream gvanno bundle onto this repo's GitHub Releases page (downloads from upstream, splits into 1.9 GB chunks, writes a manifest, uploads via `gh`). Idempotent.
+
 - DSL2 modules wrapping every gvanno helper (`gvanno_validate_input.py`, `gvanno_vep.py`, `gvanno_vcfanno.py`, `gvanno_summarise.py`, `vcf2tsvpy`, `gvanno_finalize.py`) inside `sigven/gvanno:1.7.0`.
 - `PREPARE_REFERENCES` subworkflow with `prestaged` and `download` modes; ordered mirror list.
 - Samplesheet input via native `splitCsv` (no external plugin required).

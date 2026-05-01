@@ -166,6 +166,21 @@ Upstream gvanno is structured as a Python script that builds and runs Docker com
 
 The only thing this repository contains, in terms of "science", is glue code calling upstream's helpers. Everything material is downstream of `sigven/gvanno`.
 
+## Maintainer note: populating the GitHub Releases mirror
+
+`params.refdata_url_base` lists `https://github.com/Biocentric/gvanno-nf/releases/download/refdata-<version>` as a fallback mirror. Until that release is populated, the URL returns 404 and `BUNDLE_FETCH` transparently falls back to the upstream Oslo mirror.
+
+To populate it (one-shot, per refdata version):
+
+```bash
+gh auth login                                    # if not already
+bash scripts/publish-refdata-mirror.sh           # both assemblies
+# or:
+bash scripts/publish-refdata-mirror.sh grch37    # one assembly
+```
+
+Requires `gh`, `curl`, `split`, `sha256sum`, ~10 GB free disk. Idempotent — re-running skips assets already on the release.
+
 ## Status
 
 **v0.1.0dev** — first end-to-end run completed 2026-05-01 against the upstream example VCF (GRCh37, 8871 variants, 1 m 18 s). See [`CHANGELOG.md`](CHANGELOG.md) and [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) for the current verification state and roadmap items.
