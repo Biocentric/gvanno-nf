@@ -10,3 +10,7 @@ results/
 .DS_Store
 __pycache__/
 *.pyc
+
+# ...but keep committed test fixtures that live under assets/
+!assets/*.vcf
+!assets/*.vcf.gz

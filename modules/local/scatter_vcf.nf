@@ -1,11 +1,10 @@
 process SCATTER_VCF {
     tag "${meta.id}"
     label 'process_low'
-    container 'quay.io/biocontainers/bcftools:1.19--h8b25389_0'
+    container "${ params.gvanno_container }"
 
     input:
     tuple val(meta), path(vcf), path(tbi)
-    path  fai
 
     output:
     tuple val(meta), path("shards/*.vcf.gz"), path("shards/*.vcf.gz.tbi"), emit: shards
@@ -14,14 +13,14 @@ process SCATTER_VCF {
     script:
     """
     mkdir -p shards
-    # one shard per primary contig (skip alt/unplaced via length filter)
-    awk '\$2 > 1000000 {print \$1}' ${fai} | while read chr; do
-        bcftools view -O z -o shards/${meta.id}.\${chr}.vcf.gz -r \${chr} ${vcf} || true
-        if [ -s shards/${meta.id}.\${chr}.vcf.gz ]; then
-            tabix -p vcf shards/${meta.id}.\${chr}.vcf.gz
-        else
-            rm -f shards/${meta.id}.\${chr}.vcf.gz
-        fi
+    # Shard per contig actually present in the (already validated & normalised)
+    # VCF. gvanno_validate_input.py has already restricted variants to
+    # 1-22,X,Y,M/MT, so `tabix -l` returns only standard chromosomes and we do
+    # not need to read a reference .fai. This is assembly-agnostic (works the
+    # same for GRCh37 and GRCh38).
+    for chr in \$(tabix -l ${vcf}); do
+        bcftools view -O z -o "shards/${meta.id}.\${chr}.vcf.gz" -r "\${chr}" ${vcf}
+        tabix -p vcf "shards/${meta.id}.\${chr}.vcf.gz"
     done
 
     cat <<-END_VERSIONS > versions.yml

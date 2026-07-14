@@ -2,6 +2,17 @@
 
 ## v0.1.0dev — unreleased
 
+GRCh38 support (2026-05-01):
+- GRCh38 made a first-class, tested assembly (it is already the pipeline default). Verified the GRCh38 external resources against upstream: Ensembl VEP cache 110, Ensembl `primary_assembly` FASTA, LOFTEE GRCh38 ancestor, and the upstream gvanno GRCh38 bundle.
+- New committed GRCh38 test fixture `assets/example.grch38.vcf` — 11 canonical variants across 9 chromosomes, every chrom/pos/REF/ALT verified against the Ensembl GRCh38 REST API.
+- New `test_grch38` profile + `conf/test_grch38.config` + `assets/test_grch38_samplesheet.csv`.
+- Corrected `conf/genomes.config` `fasta_filename` `.fa.bgz` → `.fa.gz` (matches what `gvanno_vep.py` and `BUNDLE_PREPARE` actually use) for both assemblies.
+- Reworked `SCATTER_VCF`: enumerate contigs from the validated VCF's own tabix index (`tabix -l`) instead of a reference `.fai`. The old `ref.fa.fai` path never existed after `BUNDLE_PREPARE`, so scatter would have failed on both assemblies. Now assembly-agnostic and needs no reference index. `CONCAT_VCFS` gather now sorts the concatenated output.
+- `INPUT_CHECK`/`VALIDATE_VCF`: dropped the input `.tbi` requirement. `VALIDATE_VCF` re-indexes every input, so a pre-existing index was never used; the pipeline now accepts plain uncompressed `.vcf` inputs. `vcf_index` samplesheet column still accepted but ignored.
+- Removed dead `asm_short` variable in `FINALIZE_TSV`.
+
+## v0.1.0dev — initial skeleton
+
 Initial Phase 1 skeleton. End-to-end smoke test passed 2026-05-01 on Ubuntu 24.04 / Nextflow 26.04 / Docker 29.4 against the upstream gvanno example VCF (GRCh37, 8871 variants, 1 m 18 s).
 
 Fixes during smoke test:

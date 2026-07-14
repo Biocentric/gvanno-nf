@@ -46,11 +46,23 @@ To populate the mirror, a repo maintainer runs `scripts/publish-refdata-mirror.s
 
 Until the script runs, the GH mirror URLs in `params.refdata_url_base` return 404 and the pipeline transparently falls back to the upstream Oslo mirror — same behaviour as before.
 
-### GRCh38
-Smoke test was GRCh37 only. GRCh38 path differences (different fasta filename, different LOFTEE ancestor URL, GENCODE v44 instead of v19) are wired in `conf/genomes.config` but not exercised.
+### GRCh38 — now first-class, statically verified, live run pending
+GRCh38 is fully wired and is the pipeline default (`params.genome = 'GRCh38'`). The code is entirely parameterised by `params.genomes[params.genome]` — no module hardcodes an assembly — so GRCh38 traverses exactly the same paths GRCh37 did in the smoke test.
 
-### `--scatter_by chromosome`
-Off in this smoke run. Logic in `annotate_variants.nf` exists but was not exercised end-to-end; the `groupTuple` + concat path needs a real test.
+Verified for GRCh38 (2026-05-01):
+- **Ensembl VEP cache** `homo_sapiens_vep_110_GRCh38.tar.gz` (20 GB) present at `ftp.ensembl.org/pub/release-110/variation/indexed_vep_cache/`.
+- **Ensembl FASTA** `Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz` (841 MB) present (note: GRCh38 uses the main FASTA path, not the `grch37/` subpath — reflected in `conf/genomes.config`).
+- **LOFTEE GRCh38 ancestor** `human_ancestor.fa.gz{,.fai,.gzi}` present at the Broad mirror.
+- **gvanno GRCh38 bundle** — upstream `download_gvanno_refdata.py` builds `gvanno.databundle.grch38.20231224.tgz` from the same base as grch37, and gvanno's README uses `--genome_assembly grch38` as its *primary* example, so grch38 is upstream's default bundle. (The Oslo directory index is 403-forbidden, so this is confirmed by upstream's URL construction rather than a directory listing.)
+- **Test fixture** `assets/example.grch38.vcf` — 11 canonical variants (BRAF V600E, JAK2 V617F, KRAS G12D, EGFR L858R, TP53 R175H, IDH1 R132H, PIK3CA E545K, NRAS Q61K, HFE C282Y, F5 Leiden, MTHFR C677T) across 9 chromosomes. Every chrom/pos/REF/ALT was verified against the Ensembl GRCh38 REST API (`rest.ensembl.org/variation/human/<rsid>`); the REF allele matches the GRCh38 reference base in each case, which is the property VEP enforces.
+
+Not yet done: an actual GRCh38 end-to-end run (`-profile docker,test_grch38`) — the box used for the GRCh37 smoke test was unreachable when GRCh38 was implemented. Fixed genome-invariant fields (`fasta_filename` corrected `.fa.bgz`→`.fa.gz`) but the live GRCh38 pass is still pending.
+
+### `--scatter_by chromosome` — reworked, not yet exercised
+Rewritten to enumerate contigs from the validated VCF's own tabix index (`tabix -l`) instead of a reference `.fai`. The previous implementation pointed at `ref.fa.fai`, a path that never exists after `BUNDLE_PREPARE` (which stores the FASTA + `.fai` under `.vep/homo_sapiens/<ens>_<asm>/`), so scatter would have failed on **both** assemblies. The new approach needs no reference index and is assembly-agnostic. The `groupTuple` → `bcftools concat -a | bcftools sort` gather path still needs a real end-to-end test.
+
+### Optional input index
+`INPUT_CHECK` no longer requires (or carries) a `.tbi` for input VCFs — `VALIDATE_VCF` re-normalises and re-indexes everything, so a pre-existing index was never used. This lets the pipeline accept plain uncompressed `.vcf` inputs (as the GRCh38 fixture is). The `vcf_index` samplesheet column is still accepted but ignored.
 
 ### `BUNDLE_FETCH` download mode
 This smoke run used `prestaged` mode with a manually prepared bundle. The download mode logic exists but wasn't exercised.

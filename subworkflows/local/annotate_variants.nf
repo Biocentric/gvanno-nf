@@ -13,7 +13,7 @@ include { FINALIZE_TSV    } from '../../modules/local/finalize_tsv'
  */
 workflow ANNOTATE_VARIANTS {
     take:
-    ch_vcfs            // [ meta, vcf, tbi ]
+    ch_vcfs            // [ meta, vcf ]
     ch_refdata_dir     // path
     ch_vep_cache       // path
 
@@ -24,12 +24,9 @@ workflow ANNOTATE_VARIANTS {
     ch_versions = ch_versions.mix(VALIDATE_VCF.out.versions)
 
     if ( params.scatter_by == 'chromosome' ) {
-        // Pull fai from inside the bundle for splitting
-        ch_fai = ch_refdata_dir.map { root ->
-            def asm = params.genomes[params.genome].assembly_dir
-            file("${root}/data/${asm}/.vep/ref.fa.fai")
-        }
-        SCATTER_VCF ( VALIDATE_VCF.out.vcf, ch_fai )
+        // Split per contig present in the validated VCF. No reference .fai
+        // needed — SCATTER_VCF enumerates contigs from the VCF's own index.
+        SCATTER_VCF ( VALIDATE_VCF.out.vcf )
 
         // Flatten shards to one [meta,vcf,tbi,shard] per
         SCATTER_VCF.out.shards
@@ -88,7 +85,9 @@ process CONCAT_VCFS {
     def prefix = task.ext.prefix ?: "${meta.id}.gvanno.${params.genomes[params.genome].vep_assembly}"
     if ( vcfs instanceof List && vcfs.size() > 1 ) {
         """
-        bcftools concat -a -O z -o ${prefix}.vcf.gz ${vcfs.join(' ')}
+        # -a tolerates any input order (shards arrive unordered from groupTuple);
+        # sort produces a coordinate-ordered final VCF.
+        bcftools concat -a -O u ${vcfs.join(' ')} | bcftools sort -T . -O z -o ${prefix}.vcf.gz -
         tabix -p vcf ${prefix}.vcf.gz
 
         cat <<-END_VERSIONS > versions.yml

@@ -1,0 +1,34 @@
+##fileformat=VCFv4.2
+##source=gvanno-nf_test_fixture
+##reference=GRCh38
+##comment=Minimal GRCh38 smoke-test fixture for Biocentric/gvanno-nf. Each record is a
+##comment=canonical, clinically well-known variant whose GRCh38 chrom/pos/REF/ALT were
+##comment=verified against the Ensembl GRCh38 REST API (rest.ensembl.org/variation).
+##comment=The ID column carries the dbSNP rsID; the gene each variant sits in is noted
+##comment=only in this comment block (not asserted in INFO) to avoid any INFO-tag clash
+##comment=with gvanno's own annotations. Genes, in record order:
+##comment=  MTHFR(rs1801133) NRAS(rs121913254) F5/Leiden(rs6025) IDH1(rs121913500)
+##comment=  PIK3CA(rs104886003) HFE(rs1800562) EGFR(rs121434568) BRAF(rs113488022)
+##comment=  JAK2(rs77375493) KRAS(rs121913529) TP53(rs28934578)
+##FILTER=<ID=PASS,Description="All filters passed">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##contig=<ID=1>
+##contig=<ID=2>
+##contig=<ID=3>
+##contig=<ID=6>
+##contig=<ID=7>
+##contig=<ID=9>
+##contig=<ID=12>
+##contig=<ID=17>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TESTSAMPLE
+1	11796321	rs1801133	G	A	100	PASS	.	GT	0/1
+1	114713909	rs121913254	G	T	100	PASS	.	GT	0/1
+1	169549811	rs6025	C	T	100	PASS	.	GT	0/1
+2	208248388	rs121913500	C	T	100	PASS	.	GT	0/1
+3	179218303	rs104886003	G	A	100	PASS	.	GT	0/1
+6	26092913	rs1800562	G	A	100	PASS	.	GT	0/1
+7	55191822	rs121434568	T	G	100	PASS	.	GT	0/1
+7	140753336	rs113488022	A	T	100	PASS	.	GT	0/1
+9	5073770	rs77375493	G	T	100	PASS	.	GT	0/1
+12	25245350	rs121913529	C	T	100	PASS	.	GT	0/1
+17	7675088	rs28934578	C	T	100	PASS	.	GT	0/1

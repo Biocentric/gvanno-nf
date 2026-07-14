@@ -4,7 +4,7 @@ process VALIDATE_VCF {
     container "${ params.gvanno_container }"
 
     input:
-    tuple val(meta), path(vcf), path(tbi)
+    tuple val(meta), path(vcf)
     path  refdata_dir
 
     output:

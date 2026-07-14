@@ -181,9 +181,23 @@ bash scripts/publish-refdata-mirror.sh grch37    # one assembly
 
 Requires `gh`, `curl`, `split`, `sha256sum`, ~10 GB free disk. Idempotent — re-running skips assets already on the release.
 
+## Testing
+
+Two minimal test profiles ship with the pipeline (each expects the matching gvanno bundle pre-staged under `--refdata_dir`):
+
+```bash
+# GRCh37 — upstream gvanno example VCF (8871 variants)
+nextflow run Biocentric/gvanno-nf -profile docker,test --refdata_dir /scratch/refs/gvanno
+
+# GRCh38 — committed 11-variant fixture (assets/example.grch38.vcf)
+nextflow run Biocentric/gvanno-nf -profile docker,test_grch38 --refdata_dir /scratch/refs/gvanno-grch38
+```
+
+The GRCh38 fixture holds 11 canonical variants (BRAF V600E, JAK2 V617F, KRAS G12D, EGFR L858R, TP53 R175H, IDH1 R132H, PIK3CA E545K, NRAS Q61K, HFE C282Y, F5 Leiden, MTHFR C677T) spanning 9 chromosomes; every coordinate and reference allele was verified against the Ensembl GRCh38 REST API.
+
 ## Status
 
-**v0.1.0dev** — first end-to-end run completed 2026-05-01 against the upstream example VCF (GRCh37, 8871 variants, 1 m 18 s). See [`CHANGELOG.md`](CHANGELOG.md) and [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) for the current verification state and roadmap items.
+**v0.1.0dev** — GRCh37 verified end-to-end 2026-05-01 (upstream example VCF, 8871 variants, 1 m 18 s). GRCh38 is the default assembly and is fully wired: external resources and the test fixture are verified against Ensembl/Broad, but the GRCh38 live end-to-end run is still pending. See [`CHANGELOG.md`](CHANGELOG.md) and [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) for the current verification state and roadmap items.
 
 ## License
 

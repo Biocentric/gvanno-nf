@@ -1,0 +1,16 @@
+# Force LF line endings for everything — this is a Linux/Nextflow pipeline and
+# CRLF would break shell scripts, .nf process bodies, and VCF parsing.
+* text=auto eol=lf
+
+# Be explicit about the file types that MUST stay LF on checkout:
+*.nf        text eol=lf
+*.config    text eol=lf
+*.sh        text eol=lf
+*.py        text eol=lf
+*.vcf       text eol=lf
+*.csv       text eol=lf
+*.tsv       text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf

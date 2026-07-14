@@ -14,7 +14,6 @@ process FINALIZE_TSV {
     script:
     def prefix   = task.ext.prefix ?: "${meta.id}.gvanno"
     def assembly = params.genomes[params.genome].assembly_dir
-    def asm_short = params.genomes[params.genome].vep_assembly.toLowerCase().replaceFirst('grch','grch')
     """
     gvanno_finalize.py \\
         ${refdata_dir}/data/${assembly} \\
