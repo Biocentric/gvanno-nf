@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.0dev — GRCh38 verified end-to-end (2026-07-31)
+
+Live run on hephaestus (Nextflow 26.04.3 / Docker): reference download 3/3 ✔ (29m50s, 25 GB), annotation 8/8 ✔. All 11 fixture variants resolved to the expected gene + protein change.
+
+Bugs found and fixed by actually running it:
+- **`BUNDLE_FETCH` never executed.** `curlimages/curl` declares `ENTRYPOINT ["curl"]`, so Nextflow's `bash .command.run` was handed to curl as arguments — `URL rejected: No host part in the URL`, exit 3, before a single script line ran. All refdata processes now use the gvanno container (`ENTRYPOINT=null`, has bash/curl/wget/tar/gzip), so the **whole pipeline needs exactly one image** (`ubuntu:22.04` and `curlimages/curl` both dropped).
+- **`-entry` is rejected by Nextflow 26.x's strict parser.** Replaced with a `--step` param (`annotate` | `prepare_references`) that works on every version. The strict parser also rejects `switch` in a workflow body, so dispatch uses if/else.
+- **25 GB of reference data was stranded in the work dir.** `--refdata_dir` was left empty and `nextflow clean` would have deleted the download. `BUNDLE_FETCH` now declares `storeDir params.refdata_dir`.
+- **Re-running the download re-downloaded everything.** `PREPARE_REFERENCES` now checks `RELEASE_NOTES` up front and skips fetch+prepare when the bundle is already staged at the requested version (verified: seconds instead of 25 GB). Done in Groovy — the process-level `storeDir` skip does not fire reliably for directory outputs.
+- `BUNDLE_FETCH` chunk-reassembly scratch files moved from `/tmp` to the task work dir; under Singularity `/tmp` is host-bind-mounted, so concurrent fetches would have collided.
+
+Docs corrected: `vcf_index` is ignored (not "looked up"), and the output TSV column count varies with the input VCF's INFO tags (~190–220) rather than always being 221.
+
 ## v0.1.0dev — unreleased
 
 GRCh38 support (2026-05-01):

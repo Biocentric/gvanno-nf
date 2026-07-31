@@ -6,9 +6,10 @@
  * `<file>.parts.txt` manifest listing chunked uploads (used by the GitHub
  * Releases mirror, since GH caps a single asset at 2 GB).
  *
- * Output is a `refdata_out/` directory with the bundle extracted plus the raw
- * (Ensembl-gzipped) FASTA at data/<assembly>/.vep/ref.fa.gz. BUNDLE_PREPARE
- * runs next to convert the FASTA to BGZF + faidx and place it where VEP wants.
+ * Output is a `data/` directory (the bundle extracts to data/<assembly>/...)
+ * plus the raw Ensembl-gzipped FASTA at data/<assembly>/.vep/ref.fa.gz.
+ * BUNDLE_PREPARE runs next to convert that FASTA to BGZF + faidx and move it
+ * to the path VEP expects.
  *
  * Container note: do NOT use `curlimages/curl` here. That image declares
  * ENTRYPOINT ["curl"], so Nextflow's `bash .command.run` invocation is passed
@@ -25,6 +26,12 @@ process BUNDLE_FETCH {
     label 'process_low'
     container "${ params.gvanno_container }"
 
+    // storeDir puts the downloaded bundle permanently at <refdata_dir>/data and
+    // SKIPS this process entirely on any later run where that already exists.
+    // Without it the 25 GB download would sit in the Nextflow work dir, where
+    // `nextflow clean` would delete it and --refdata_dir would stay empty.
+    storeDir "${ params.refdata_dir }"
+
     input:
     val genome
     val refdata_version
@@ -32,8 +39,12 @@ process BUNDLE_FETCH {
     val with_loftee
 
     output:
-    path "refdata_out", emit: root
-    path "fetch.log",   emit: log
+    // ONLY `data` may be declared here. storeDir skips the process only when
+    // *every* declared output already exists in the store — declaring
+    // fetch.log (which is never stored there) would defeat the skip and force
+    // a fresh 25 GB download on every run. fetch.log is still written to the
+    // task work dir for debugging, just not emitted as a channel.
+    path "data", emit: data
 
     script:
     def assembly  = params.genomes[genome].assembly_dir
@@ -45,7 +56,7 @@ process BUNDLE_FETCH {
     def url_list  = (refdata_url_base instanceof List ? refdata_url_base : [ refdata_url_base ]).join(' ')
     """
     set -euo pipefail
-    mkdir -p refdata_out/data/${assembly}/.vep
+    mkdir -p data/${assembly}/.vep
     : > fetch.log
 
     # ----------------------------------------------------------------------
@@ -105,34 +116,34 @@ process BUNDLE_FETCH {
     # 1. gvanno annotation bundle (~3.7 GB compressed)
     # ----------------------------------------------------------------------
     BUNDLE=gvanno.databundle.${assembly}.${refdata_version}.tgz
-    fetch_first refdata_out/\${BUNDLE} \${BUNDLE} ${url_list}
-    tar -xzf refdata_out/\${BUNDLE} -C refdata_out/
-    rm refdata_out/\${BUNDLE}
+    fetch_first \${BUNDLE} \${BUNDLE} ${url_list}
+    tar -xzf \${BUNDLE} -C .
+    rm \${BUNDLE}
 
     # ----------------------------------------------------------------------
     # 2. VEP cache (Ensembl, single canonical URL — never chunked)
     # ----------------------------------------------------------------------
     CACHE=homo_sapiens_vep_${ens_ver}_${vep_asm}.tar.gz
-    curl -fSL --retry 5 -o refdata_out/data/${assembly}/.vep/\${CACHE} '${cache_url}'
-    tar -xzf refdata_out/data/${assembly}/.vep/\${CACHE} -C refdata_out/data/${assembly}/.vep/
-    rm refdata_out/data/${assembly}/.vep/\${CACHE}
+    curl -fSL --retry 5 -o data/${assembly}/.vep/\${CACHE} '${cache_url}'
+    tar -xzf data/${assembly}/.vep/\${CACHE} -C data/${assembly}/.vep/
+    rm data/${assembly}/.vep/\${CACHE}
 
     # ----------------------------------------------------------------------
     # 3. Reference FASTA (raw Ensembl gzip — BUNDLE_PREPARE will re-encode)
     # ----------------------------------------------------------------------
-    curl -fSL --retry 5 -o refdata_out/data/${assembly}/.vep/ref.fa.gz '${fasta_url}'
+    curl -fSL --retry 5 -o data/${assembly}/.vep/ref.fa.gz '${fasta_url}'
 
     # ----------------------------------------------------------------------
     # 4. LOFTEE ancestor (optional)
     # ----------------------------------------------------------------------
     if [ "${with_loftee}" = "true" ]; then
         for f in human_ancestor.fa.gz human_ancestor.fa.gz.fai human_ancestor.fa.gz.gzi; do
-            curl -fSL --retry 5 -o refdata_out/data/${assembly}/.vep/\${f} '${anc_url}'/\${f}
+            curl -fSL --retry 5 -o data/${assembly}/.vep/\${f} '${anc_url}'/\${f}
         done
     fi
 
-    if [ ! -f refdata_out/data/${assembly}/RELEASE_NOTES ]; then
-        echo "GVANNO_DB_VERSION = ${refdata_version}" > refdata_out/data/${assembly}/RELEASE_NOTES
+    if [ ! -f data/${assembly}/RELEASE_NOTES ]; then
+        echo "GVANNO_DB_VERSION = ${refdata_version}" > data/${assembly}/RELEASE_NOTES
     fi
 
     echo "[fetch] complete" | tee -a fetch.log

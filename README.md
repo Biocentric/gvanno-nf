@@ -76,7 +76,7 @@ These are the same resources used by upstream gvanno 1.7.0:
 
    ```bash
    nextflow run Biocentric/gvanno-nf -profile docker \
-       -entry PREPARE_REFERENCES \
+       --step prepare_references \
        --genome GRCh38 \
        --refdata_dir /scratch/refs/gvanno \
        --refdata_mode download
@@ -92,7 +92,7 @@ These are the same resources used by upstream gvanno 1.7.0:
    patientB,/data/B.vcf.gz,
    ```
 
-   `vcf_index` may be left blank; the pipeline will look for `<vcf>.tbi`.
+   `vcf_index` is optional and, in fact, ignored — the pipeline re-normalises and re-indexes every input, so plain uncompressed `.vcf` files work fine.
 
 4. **Run**:
 
@@ -115,7 +115,7 @@ For each sample, under `results/annotation/<sample>/`:
 | File | Description |
 |---|---|
 | `<sample>.gvanno.<assembly>.vcf.gz` (`.tbi`) | BGZF-compressed VCF with rich functional / clinical annotation INFO tags (CSQ, ClinVar, dbNSFP, gnomAD, CGC, …). |
-| `<sample>.gvanno.<assembly>.pass.tsv.gz` | Tab-separated values, one row per (variant × consequence). 221 columns. Same column set as upstream gvanno's `*.pass.tsv.gz`. |
+| `<sample>.gvanno.<assembly>.pass.tsv.gz` | Tab-separated values, one row per (variant × consequence). Same column set as upstream gvanno's `*.pass.tsv.gz`; the exact count (~190–220) depends on how many INFO tags your input VCF carries through. |
 | `logs/*.vep.log`, `logs/*.vcfanno.log` | Per-step logs. |
 
 Plus standard Nextflow execution reports under `results/pipeline_info/` (`execution_report.html`, `execution_timeline.html`, `pipeline_dag.html`, `execution_trace.txt`).
@@ -197,7 +197,16 @@ The GRCh38 fixture holds 11 canonical variants (BRAF V600E, JAK2 V617F, KRAS G12
 
 ## Status
 
-**v0.1.0dev** — GRCh37 verified end-to-end 2026-05-01 (upstream example VCF, 8871 variants, 1 m 18 s). GRCh38 is the default assembly and is fully wired: external resources and the test fixture are verified against Ensembl/Broad, but the GRCh38 live end-to-end run is still pending. See [`CHANGELOG.md`](CHANGELOG.md) and [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) for the current verification state and roadmap items.
+**v0.1.0dev** — both assemblies verified end-to-end:
+
+- **GRCh37** (2026-05-01): upstream gvanno example VCF, 8871 variants, 8/8 processes, 1 m 18 s.
+- **GRCh38** (2026-07-31): reference bundle downloaded fresh from the Oslo mirror (3/3 processes, 29 m 50 s, 25 GB), then annotation on the 11-variant fixture (8/8 processes). Every variant resolved to the expected gene and protein change.
+
+See [`CHANGELOG.md`](CHANGELOG.md) and [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) for what remains unverified (bit-identical diff vs upstream, `--scatter_by chromosome`, nf-test, CI).
+
+### Disk space
+
+GRCh38 needs noticeably more room than GRCh37 (VEP cache 20 GB vs 13 GB). Budget **~25 GB** for the staged bundle and **~45 GB peak** during setup, since the VEP cache tarball and its extraction briefly coexist. Point `--refdata_dir` at a volume with real headroom.
 
 ## License
 

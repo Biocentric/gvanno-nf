@@ -46,7 +46,31 @@ To populate the mirror, a repo maintainer runs `scripts/publish-refdata-mirror.s
 
 Until the script runs, the GH mirror URLs in `params.refdata_url_base` return 404 and the pipeline transparently falls back to the upstream Oslo mirror — same behaviour as before.
 
-### GRCh38 — now first-class, statically verified, live run pending
+## GRCh38 — VERIFIED END-TO-END 2026-07-31
+
+Run on hephaestus (Nextflow 26.04.3 / Docker), GRCh38 bundle downloaded fresh from the Oslo mirror:
+
+```
+--step prepare_references --refdata_mode download   : 3/3 processes ✔ (29m 50s, 25 GB)
+--input <11-variant fixture> --refdata_mode prestaged: 8/8 processes ✔
+```
+
+Every fixture variant annotated to the expected gene and protein change, which confirms the GRCh38 coordinates and reference alleles are correct end-to-end:
+
+| Variant | Result | | Variant | Result |
+|---|---|---|---|---|
+| 1:11796321 G>A | MTHFR p.A222V | | 7:55191822 T>G | EGFR p.L858R |
+| 1:114713909 G>T | NRAS p.Q61K | | 7:140753336 A>T | BRAF p.V600E |
+| 1:169549811 C>T | F5 p.R534Q | | 9:5073770 G>T | JAK2 p.V617F |
+| 2:208248388 C>T | IDH1 p.R132H | | 12:25245350 C>T | KRAS p.G12D |
+| 3:179218303 G>A | PIK3CA p.E545K | | 17:7675088 C>T | TP53 p.R175H |
+| 6:26092913 G>A | HFE p.C282Y | | | |
+
+(F5 reports `p.R534Q`; the familiar "R506Q" is the same variant numbered on the mature protein rather than the HGVS precursor.)
+
+Output TSV column count varies with the input VCF's own INFO tags (vcf2tsvpy passes them through): 221 columns for the GRCh37 example VCF, 189 for this fixture whose INFO is empty. Not assembly-dependent.
+
+### Original GRCh38 wiring notes
 GRCh38 is fully wired and is the pipeline default (`params.genome = 'GRCh38'`). The code is entirely parameterised by `params.genomes[params.genome]` — no module hardcodes an assembly — so GRCh38 traverses exactly the same paths GRCh37 did in the smoke test.
 
 Verified for GRCh38 (2026-05-01):
@@ -56,7 +80,7 @@ Verified for GRCh38 (2026-05-01):
 - **gvanno GRCh38 bundle** — upstream `download_gvanno_refdata.py` builds `gvanno.databundle.grch38.20231224.tgz` from the same base as grch37, and gvanno's README uses `--genome_assembly grch38` as its *primary* example, so grch38 is upstream's default bundle. (The Oslo directory index is 403-forbidden, so this is confirmed by upstream's URL construction rather than a directory listing.)
 - **Test fixture** `assets/example.grch38.vcf` — 11 canonical variants (BRAF V600E, JAK2 V617F, KRAS G12D, EGFR L858R, TP53 R175H, IDH1 R132H, PIK3CA E545K, NRAS Q61K, HFE C282Y, F5 Leiden, MTHFR C677T) across 9 chromosomes. Every chrom/pos/REF/ALT was verified against the Ensembl GRCh38 REST API (`rest.ensembl.org/variation/human/<rsid>`); the REF allele matches the GRCh38 reference base in each case, which is the property VEP enforces.
 
-Not yet done: an actual GRCh38 end-to-end run (`-profile docker,test_grch38`) — the box used for the GRCh37 smoke test was unreachable when GRCh38 was implemented. Fixed genome-invariant fields (`fasta_filename` corrected `.fa.bgz`→`.fa.gz`) but the live GRCh38 pass is still pending.
+All of the above is now confirmed by the live run recorded at the top of this file.
 
 ### `--scatter_by chromosome` — reworked, not yet exercised
 Rewritten to enumerate contigs from the validated VCF's own tabix index (`tabix -l`) instead of a reference `.fai`. The previous implementation pointed at `ref.fa.fai`, a path that never exists after `BUNDLE_PREPARE` (which stores the FASTA + `.fai` under `.vep/homo_sapiens/<ens>_<asm>/`), so scatter would have failed on **both** assemblies. The new approach needs no reference index and is assembly-agnostic. The `groupTuple` → `bcftools concat -a | bcftools sort` gather path still needs a real end-to-end test.
@@ -64,8 +88,13 @@ Rewritten to enumerate contigs from the validated VCF's own tabix index (`tabix 
 ### Optional input index
 `INPUT_CHECK` no longer requires (or carries) a `.tbi` for input VCFs — `VALIDATE_VCF` re-normalises and re-indexes everything, so a pre-existing index was never used. This lets the pipeline accept plain uncompressed `.vcf` inputs (as the GRCh38 fixture is). The `vcf_index` samplesheet column is still accepted but ignored.
 
-### `BUNDLE_FETCH` download mode
-This smoke run used `prestaged` mode with a manually prepared bundle. The download mode logic exists but wasn't exercised.
+### `BUNDLE_FETCH` download mode — VERIFIED
+Exercised end-to-end for GRCh38 (see top of file). Two bugs were found and fixed in the process:
 
-### Container choices for refdata steps
-`BUNDLE_VERIFY` runs in `ubuntu:22.04` and `BUNDLE_FETCH` in `curlimages/curl:8.5.0`. Both pull cleanly but bring in two extra images. Could consolidate into a single tiny image or use the gvanno container.
+1. **Container entrypoint.** `curlimages/curl` declares `ENTRYPOINT ["curl"]`, so Nextflow's `bash .command.run` was passed to curl as arguments; curl reported `URL rejected: No host part in the URL` and exited 3 before running a single script line. All refdata steps now use the gvanno container (`ENTRYPOINT=null`, ships bash/curl/wget/tar/gzip) — so the whole pipeline needs exactly **one** image. This also closes the old "container choices for refdata steps" item.
+2. **Where the data lands.** `BUNDLE_FETCH` now declares `storeDir params.refdata_dir`, so the bundle is written to `<refdata_dir>/data` instead of being stranded in the Nextflow work dir where `nextflow clean` would delete it.
+
+Re-running `--step prepare_references --refdata_mode download` is now cheap: `PREPARE_REFERENCES` checks `RELEASE_NOTES` up front and skips fetch+prepare when the bundle is already staged at the requested version (verified: only `BUNDLE_VERIFY` runs, seconds instead of 25 GB). Note this idempotency check is done in Groovy — the process-level `storeDir` skip does **not** fire reliably for a directory output, so it is not relied upon.
+
+### Nextflow 26.x compatibility
+`-entry` is rejected outright by the 26.x strict parser. The pipeline uses a `--step` param instead (`annotate` | `prepare_references`), which works on every version. The strict parser also rejects `switch` in a workflow body — the dispatch uses if/else.

@@ -15,10 +15,10 @@ process BUNDLE_PREPARE {
 
     input:
     val  genome
-    path refdata_dir
+    path data_dir
 
     output:
-    path  refdata_dir, includeInputs: true, emit: root
+    path  data_dir, includeInputs: true, emit: data
     path  "prepare.log",                    emit: log
 
     script:
@@ -26,19 +26,19 @@ process BUNDLE_PREPARE {
     def vep_asm   = params.genomes[genome].vep_assembly
     def ens_ver   = params.genomes[genome].ensembl_version
     def fasta_name = "Homo_sapiens.${vep_asm}.dna.primary_assembly.fa.gz"
-    def vep_subdir = "data/${assembly}/.vep/homo_sapiens/${ens_ver}_${vep_asm}"
+    def vep_subdir = "${assembly}/.vep/homo_sapiens/${ens_ver}_${vep_asm}"
     """
     set -euo pipefail
     : > prepare.log
 
-    DEST_DIR=${refdata_dir}/${vep_subdir}
+    DEST_DIR=${data_dir}/${vep_subdir}
     mkdir -p "\$DEST_DIR"
     DEST="\$DEST_DIR/${fasta_name}"
 
     # Locate the freshly downloaded FASTA. BUNDLE_FETCH leaves it as
-    # ${refdata_dir}/data/${assembly}/.vep/ref.fa.gz; older layouts may
+    # ${data_dir}/${assembly}/.vep/ref.fa.gz; older layouts may
     # already have it placed at \$DEST.
-    SRC="${refdata_dir}/data/${assembly}/.vep/ref.fa.gz"
+    SRC="${data_dir}/${assembly}/.vep/ref.fa.gz"
     if [ ! -f "\$SRC" ] && [ ! -f "\$DEST" ]; then
         echo "[prepare] no FASTA found at \$SRC or \$DEST" | tee -a prepare.log
         exit 1
@@ -72,7 +72,7 @@ process BUNDLE_PREPARE {
     fi
 
     # Stamp release notes if upstream bundle didn't ship one
-    REL=${refdata_dir}/data/${assembly}/RELEASE_NOTES
+    REL=${data_dir}/${assembly}/RELEASE_NOTES
     if [ ! -f "\$REL" ]; then
         echo "GVANNO_DB_VERSION = ${params.refdata_version}" > "\$REL"
     fi

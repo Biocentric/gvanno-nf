@@ -4,14 +4,19 @@ include { BUNDLE_VERIFY  } from '../../modules/local/refdata/bundle_verify'
 
 /*
  * Resolves a usable reference bundle.
- *   prestaged: assume params.refdata_dir already holds the bundle (default)
- *   download:  fetch + prepare into a Nextflow work dir; user is responsible
- *              for moving the resulting refdata_out/ contents to a permanent
- *              location, OR for re-running with --refdata_mode prestaged
- *              against that location for subsequent annotation runs.
  *
- * If RELEASE_NOTES is missing in prestaged mode we abort with a clear message
- * pointing to -entry PREPARE_REFERENCES + --refdata_mode download.
+ *   prestaged (default) — params.refdata_dir already holds the bundle.
+ *   download            — fetch + prepare into params.refdata_dir.
+ *
+ * Both modes end up emitting the SAME shape: a bundle root that contains
+ * data/<assembly>/..., so everything downstream is mode-agnostic.
+ *
+ * Download is idempotent at the workflow level: if the bundle is already
+ * present and its RELEASE_NOTES matches params.refdata_version, the fetch is
+ * skipped entirely and the existing copy is reused. That makes re-running
+ * `--step prepare_references` cheap instead of re-pulling ~25 GB. (We do this
+ * check in Groovy rather than relying on the process-level storeDir skip,
+ * which does not fire reliably for a directory output.)
  */
 workflow PREPARE_REFERENCES {
     take:
@@ -22,31 +27,41 @@ workflow PREPARE_REFERENCES {
     main:
     def assembly = params.genomes[genome].assembly_dir
 
-    if ( params.refdata_mode == 'download' ) {
+    if ( !refdata_dir_param ) {
+        error "--refdata_dir <path> is required (destination in download mode, source in prestaged mode)"
+    }
+
+    def release_notes  = file("${refdata_dir_param}/data/${assembly}/RELEASE_NOTES")
+    def already_staged = release_notes.exists() &&
+                         release_notes.text.contains("GVANNO_DB_VERSION = ${refdata_version}")
+
+    if ( params.refdata_mode == 'download' && !already_staged ) {
         BUNDLE_FETCH(
             genome,
             refdata_version,
             params.refdata_url_base,
             params.vep_lof_prediction
         )
-        BUNDLE_PREPARE( genome, BUNDLE_FETCH.out.root )
-        ch_root = BUNDLE_PREPARE.out.root
-    } else {
-        // prestaged
-        if ( !refdata_dir_param ) {
-            error "refdata_mode=prestaged requires --refdata_dir <path>"
-        }
-        def staged = file(refdata_dir_param)
-        def release_notes = file("${refdata_dir_param}/data/${assembly}/RELEASE_NOTES")
+        // BUNDLE_FETCH declares `storeDir params.refdata_dir`, so its `data`
+        // output is written to <refdata_dir>/data rather than being left to rot
+        // in the Nextflow work dir. BUNDLE_PREPARE then edits it in place there.
+        BUNDLE_PREPARE( genome, BUNDLE_FETCH.out.data )
+        ch_root = BUNDLE_PREPARE.out.data.map { file(refdata_dir_param) }
+    }
+    else {
         if ( !release_notes.exists() ) {
             error """
             Reference bundle not found at ${refdata_dir_param}/data/${assembly}/.
             Either:
-              - run with -entry PREPARE_REFERENCES --refdata_mode download to fetch it
+              - run with --step prepare_references --refdata_mode download to fetch it
               - or point --refdata_dir at an existing gvanno bundle (look for RELEASE_NOTES)
             """.stripIndent()
         }
-        ch_root = Channel.value(staged)
+        if ( params.refdata_mode == 'download' ) {
+            log.info "[nf-gvanno] Reference bundle ${refdata_version} already present at " +
+                     "${refdata_dir_param} — skipping download."
+        }
+        ch_root = Channel.value(file(refdata_dir_param))
     }
 
     // Optional checksum manifest shipped with the pipeline
@@ -54,8 +69,8 @@ workflow PREPARE_REFERENCES {
 
     BUNDLE_VERIFY( genome, ch_root, manifest_file )
 
-    // Tie verification result into the downstream channel so processes can't
-    // start until verification passes.
+    // Tie verification into the downstream channel so annotation processes
+    // cannot start until verification passes.
     ch_root_verified = ch_root.combine(BUNDLE_VERIFY.out.ok).map { root, _ok -> root }
     ch_vep_cache     = ch_root_verified.map { root -> file("${root}/data/${assembly}/.vep") }
 

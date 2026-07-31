@@ -10,7 +10,7 @@ patientB,/data/B.vcf.gz,
 
 - `sample` — unique ID, used to name outputs. Must match `[A-Za-z0-9._-]+`.
 - `vcf` — path to a single-sample germline VCF (≥ v4.2).
-- `vcf_index` — optional. If blank, the pipeline looks for `<vcf>.tbi` next to the VCF.
+- `vcf_index` — optional and ignored. `VALIDATE_VCF` re-normalises and re-indexes every input, so a pre-existing index is never used; plain uncompressed `.vcf` inputs are fine.
 
 ## Reference data (one-off setup)
 
@@ -18,7 +18,7 @@ The pinned gvanno bundle is ~20 GB across four sources. Stage it once:
 
 ```bash
 nextflow run Biocentric/gvanno-nf -profile docker \
-    -entry PREPARE_REFERENCES \
+    --step prepare_references \
     --genome GRCh38 \
     --refdata_dir /scratch/refs/gvanno \
     --refdata_mode download
