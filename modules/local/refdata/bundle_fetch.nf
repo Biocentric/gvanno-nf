@@ -9,11 +9,21 @@
  * Output is a `refdata_out/` directory with the bundle extracted plus the raw
  * (Ensembl-gzipped) FASTA at data/<assembly>/.vep/ref.fa.gz. BUNDLE_PREPARE
  * runs next to convert the FASTA to BGZF + faidx and place it where VEP wants.
+ *
+ * Container note: do NOT use `curlimages/curl` here. That image declares
+ * ENTRYPOINT ["curl"], so Nextflow's `bash .command.run` invocation is passed
+ * to curl as arguments — curl then reports `URL rejected: No host part in the
+ * URL` and exits 3 before any of this script runs. It is also Alpine-based
+ * (no bash).
+ *
+ * We reuse the gvanno container instead: it has no ENTRYPOINT, ships
+ * bash/curl/wget/tar/gzip, and the user must pull it for the annotation steps
+ * anyway — so the whole pipeline needs exactly one image.
  */
 process BUNDLE_FETCH {
     tag "${genome}/${refdata_version}"
     label 'process_low'
-    container 'curlimages/curl:8.5.0'
+    container "${ params.gvanno_container }"
 
     input:
     val genome
@@ -56,10 +66,13 @@ process BUNDLE_FETCH {
                 return 0
             fi
 
-            # 2. Try the chunked-manifest fallback (GH Releases mirror)
+            # 2. Try the chunked-manifest fallback (GH Releases mirror).
+            # Scratch files stay in the task work dir, NOT /tmp: under
+            # Singularity /tmp is bind-mounted from the host by default, so
+            # concurrent fetches would clobber each other's parts/chunks.
             local manifest_url="\${url}.parts.txt"
             echo "[fetch] trying chunked \${manifest_url}" | tee -a fetch.log
-            if curl -fSL --retry 3 --retry-delay 5 -o /tmp/parts.txt "\${manifest_url}" 2>/dev/null; then
+            if curl -fSL --retry 3 --retry-delay 5 -o ./parts.txt "\${manifest_url}" 2>/dev/null; then
                 echo "[fetch] manifest found, reassembling chunks" | tee -a fetch.log
                 : > "\${out}"
                 local part_ok=1
@@ -67,15 +80,15 @@ process BUNDLE_FETCH {
                     [ -z "\${part}" ] && continue
                     local part_url="\${base%/}/\${part}"
                     echo "[fetch]   chunk \${part_url}" | tee -a fetch.log
-                    if ! curl -fSL --retry 5 --retry-delay 10 -o /tmp/chunk "\${part_url}"; then
+                    if ! curl -fSL --retry 5 --retry-delay 10 -o ./chunk.tmp "\${part_url}"; then
                         echo "[fetch]   chunk failed" | tee -a fetch.log
                         part_ok=0
                         break
                     fi
-                    cat /tmp/chunk >> "\${out}"
-                    rm -f /tmp/chunk
-                done < /tmp/parts.txt
-                rm -f /tmp/parts.txt
+                    cat ./chunk.tmp >> "\${out}"
+                    rm -f ./chunk.tmp
+                done < ./parts.txt
+                rm -f ./parts.txt
                 if [ "\$part_ok" = "1" ]; then
                     echo "[fetch] ok (chunked) \${url}" | tee -a fetch.log
                     return 0

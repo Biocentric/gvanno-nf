@@ -30,15 +30,19 @@ def helpMessage() {
 
     Stage references only:
         nextflow run Biocentric/gvanno-nf -profile docker \\
-            -entry PREPARE_REFERENCES \\
+            --step prepare_references \\
             --genome GRCh38 \\
             --refdata_dir /path/to/refdata \\
             --refdata_mode download
+
+        (Use --step, NOT -entry. Nextflow 26.x's strict parser rejects the
+         -entry CLI option outright; --step works on every Nextflow version.)
 
     Required:
         --input              CSV samplesheet with columns: sample,vcf,vcf_index
         --refdata_dir        Path to (or destination for) the gvanno bundle
         --genome             GRCh37 | GRCh38                              (default: GRCh38)
+        --step               annotate | prepare_references                (default: annotate)
 
     Reference handling:
         --refdata_mode       prestaged | download                          (default: prestaged)
@@ -64,18 +68,29 @@ def helpMessage() {
     """
 }
 
+/*
+ * Single entry workflow, dispatched by --step.
+ *
+ * We deliberately do NOT rely on `-entry`: Nextflow 26.x enables a strict
+ * parser that rejects the -entry CLI option ("use a param to run a named
+ * workflow from the entry workflow"). A plain param works identically on
+ * every Nextflow version, so --step is the only supported switch.
+ */
 workflow {
     if ( params.help ) {
         helpMessage()
         return
     }
-    GVANNO()
-}
 
-workflow PREPARE_REFERENCES {
-    if ( params.help ) {
-        helpMessage()
-        return
+    // if/else rather than switch: Nextflow 26.x's strict parser does not
+    // accept switch statements in a workflow body.
+    if ( params.step == 'annotate' ) {
+        GVANNO()
     }
-    PREPARE_REFS_ONLY()
+    else if ( params.step == 'prepare_references' ) {
+        PREPARE_REFS_ONLY()
+    }
+    else {
+        error "Unknown --step '${params.step}'. Valid values: annotate, prepare_references"
+    }
 }

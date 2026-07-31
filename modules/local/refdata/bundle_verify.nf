@@ -6,7 +6,7 @@
 process BUNDLE_VERIFY {
     tag "${genome}/${params.refdata_version}"
     label 'process_low'
-    container 'ubuntu:22.04'
+    container "${ params.gvanno_container }"
 
     input:
     val  genome
