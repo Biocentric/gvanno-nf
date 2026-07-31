@@ -31,7 +31,11 @@ workflow PREPARE_REFERENCES {
         error "--refdata_dir <path> is required (destination in download mode, source in prestaged mode)"
     }
 
-    def release_notes  = file("${refdata_dir_param}/data/${assembly}/RELEASE_NOTES")
+    // Strip trailing slashes so joined paths and error messages stay readable
+    // (a user-supplied ".../grch38/" otherwise yields ".../grch38//data/...").
+    def refdata_root = refdata_dir_param.toString().replaceAll('/+$', '')
+
+    def release_notes  = file("${refdata_root}/data/${assembly}/RELEASE_NOTES")
     def already_staged = release_notes.exists() &&
                          release_notes.text.contains("GVANNO_DB_VERSION = ${refdata_version}")
 
@@ -46,22 +50,53 @@ workflow PREPARE_REFERENCES {
         // output is written to <refdata_dir>/data rather than being left to rot
         // in the Nextflow work dir. BUNDLE_PREPARE then edits it in place there.
         BUNDLE_PREPARE( genome, BUNDLE_FETCH.out.data )
-        ch_root = BUNDLE_PREPARE.out.data.map { file(refdata_dir_param) }
+        ch_root = BUNDLE_PREPARE.out.data.map { file(refdata_root) }
     }
     else {
         if ( !release_notes.exists() ) {
-            error """
-            Reference bundle not found at ${refdata_dir_param}/data/${assembly}/.
-            Either:
-              - run with --step prepare_references --refdata_mode download to fetch it
-              - or point --refdata_dir at an existing gvanno bundle (look for RELEASE_NOTES)
-            """.stripIndent()
+            // Work out WHY it's missing so the message is actionable rather than
+            // just echoing a path back at the user.
+            def diagnosis = []
+
+            def assembly_suffix = "/data/${assembly}"
+            if ( file("${refdata_root}/RELEASE_NOTES").exists() ) {
+                // --refdata_dir points INTO the bundle (at the assembly dir)
+                // rather than at its root. Very easy mistake: that directory
+                // looks like "the data" when you list it.
+                def suggested = refdata_root.endsWith(assembly_suffix)
+                    ? refdata_root[0..<(refdata_root.length() - assembly_suffix.length())]
+                    : '<the directory that contains data/>'
+                diagnosis << "--refdata_dir appears to point at the ASSEMBLY directory, not the bundle root."
+                diagnosis << "The root is the directory that CONTAINS data/${assembly}/. Try:"
+                diagnosis << ""
+                diagnosis << "    --refdata_dir ${suggested}"
+            }
+            else {
+                // Right root, wrong --genome?
+                params.genomes.keySet().findAll { it != genome }.each { other ->
+                    def other_dir = params.genomes[other].assembly_dir
+                    if ( file("${refdata_root}/data/${other_dir}/RELEASE_NOTES").exists() ) {
+                        diagnosis << "Found a ${other} bundle at this location, but --genome is ${genome}."
+                        diagnosis << "Either pass --genome ${other}, or point --refdata_dir at a ${genome} bundle."
+                    }
+                }
+            }
+
+            if ( !diagnosis ) {
+                diagnosis << "Either:"
+                diagnosis << "  - run with --step prepare_references --refdata_mode download to fetch it"
+                diagnosis << "  - or point --refdata_dir at an existing gvanno bundle"
+            }
+
+            error( ( [ "",
+                       "Reference bundle not found: expected ${refdata_root}${assembly_suffix}/RELEASE_NOTES",
+                       "" ] + diagnosis + [ "" ] ).join('\n') )
         }
         if ( params.refdata_mode == 'download' ) {
             log.info "[nf-gvanno] Reference bundle ${refdata_version} already present at " +
-                     "${refdata_dir_param} — skipping download."
+                     "${refdata_root} — skipping download."
         }
-        ch_root = Channel.value(file(refdata_dir_param))
+        ch_root = Channel.value(file(refdata_root))
     }
 
     // Optional checksum manifest shipped with the pipeline
