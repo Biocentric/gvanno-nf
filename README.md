@@ -1,20 +1,32 @@
-# ![gvanno-nf](docs/images/gvanno-nf_logo.png)
+# gvanno-nf
 
 [![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A523.10-23aa62.svg)](https://www.nextflow.io/)
 [![run with docker](https://img.shields.io/badge/run%20with-docker-0db7ed?labelColor=000000&logo=docker)](https://www.docker.com/)
 [![run with singularity](https://img.shields.io/badge/run%20with-singularity-1d355c.svg?labelColor=000000)](https://sylabs.io/docs/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Introduction
+A Nextflow (DSL2, nf-core style) pipeline for **functional and clinical annotation of human germline DNA variants (SNVs / InDels)**.
 
-**Biocentric/gvanno-nf** is a Nextflow / nf-core style pipeline for **functional and clinical annotation of human germline DNA variants (SNVs / InDels)**.
+> ### Credit
+>
+> **This pipeline is not new science.** It is a samplesheet-driven re-engineering of the [**`gvanno`**](https://github.com/sigven/gvanno) workflow created and maintained by [**Sigve Nakken**](https://github.com/sigven) and colleagues at the [University of Oslo](https://www.uio.no/) and [Oslo University Hospital](https://www.ous-research.no/).
+>
+> Every annotation step, every reference database, every helper script that produces output here, and the container it all runs in are the work of the upstream gvanno project. This repository only replaces the orchestration layer — the original `gvanno.py` Docker driver — with a Nextflow workflow, so the same scientific output can be produced from a samplesheet with standard executor profiles.
+>
+> **If you use this pipeline in published work, cite gvanno.** See [Credit and citation](#credit-and-citation) and [`CITATIONS.md`](CITATIONS.md).
 
-This pipeline is **not new science**. It is an exact, samplesheet-driven re-engineering of the [**`gvanno`**](https://github.com/sigven/gvanno) workflow developed and maintained by [**Sigve Nakken**](https://github.com/sigven) and colleagues at the University of Oslo. Every annotation step, every reference data file, and every helper script that produces output here is the work of the upstream gvanno project. We have only repackaged the orchestration layer — replacing the original `gvanno.py` Docker driver with a DSL2 Nextflow workflow — so that the same scientific output can be produced with `nextflow run`, a samplesheet, and standard nf-core executor profiles.
+## Status
 
-If you use this pipeline in published work, **please cite the upstream gvanno project**. See [Credit and citation](#credit-and-citation) below.
+**v0.1.0dev** — both assemblies verified end to end.
+
+| Assembly | Reference staging | Annotation | Date |
+|---|---|---|---|
+| **GRCh37** | pre-staged bundle | 8/8 processes ✔ — upstream gvanno example VCF, 8871 variants, 1 m 18 s | 2026-05-01 |
+| **GRCh38** | 3/3 processes ✔ — fresh download, 25 GB, 29 m 50 s | 8/8 processes ✔ — 11-variant fixture, all resolved to the expected gene + protein change | 2026-07-31 |
+
+Not yet verified: bit-identical diff against an upstream `gvanno.py` run, `--scatter_by chromosome`, nf-test coverage, CI. See [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) — it is kept honest and current.
 
 ## Pipeline summary
-
-The pipeline accepts a CSV samplesheet of one or more single-sample germline VCFs and runs each sample through:
 
 ```
                    ┌──────────────────────┐
@@ -54,77 +66,106 @@ samplesheet.csv ─► │  INPUT_CHECK         │
                    └──────────────────────┘
 ```
 
-## Annotation resources (pinned to upstream gvanno 1.7.0, refdata bundle `20231224`)
+Every process runs in a single container, `sigven/gvanno:1.7.0` — the same image upstream gvanno uses. There is nothing else to install.
 
-These are the same resources used by upstream gvanno 1.7.0:
+## Requirements
 
-- [**VEP**](http://www.ensembl.org/info/docs/tools/vep/index.html) — Variant Effect Predictor v110 (GENCODE v44 / v19)
-- [**dBNSFP**](https://sites.google.com/site/jpopgen/dbNSFP) — non-synonymous functional predictions, v4.5 (November 2023)
-- [**gnomAD**](http://gnomad.broadinstitute.org/) — germline variant frequencies, release 2.1 (October 2018), via VEP
-- [**dbSNP**](http://www.ncbi.nlm.nih.gov/SNP/) — short genetic variants, build 154, via VEP
-- [**ClinVar**](http://www.ncbi.nlm.nih.gov/clinvar/) — variants and human disease phenotypes (December 2023)
-- [**CancerMine**](http://bionlp.bcgsc.ca/cancermine/) — literature-mined cancer driver / oncogene / TSG database (version 50, March 2023)
-- [**Mutation hotspots**](https://www.cancerhotspots.org/) — cancer mutation hotspots
-- [**NHGRI-EBI GWAS Catalog**](https://www.ebi.ac.uk/gwas/home) — published GWAS associations (November 2023)
-- [**ncER**](https://www.nature.com/articles/s41467-019-13212-3) — non-coding essential regulation scores
+- **Nextflow** ≥ 23.10 (tested on 25.04 and 26.04)
+- **Docker**, Singularity, or Apptainer
+- **Disk**: ~25 GB for a staged GRCh38 bundle, and **~45 GB peak** during setup (the 20 GB VEP cache tarball and its extraction briefly coexist). GRCh37 is smaller — its VEP cache is 13 GB rather than 20 GB. Point `--refdata_dir` at a volume with real headroom.
+
+> **Nextflow 26.x users:** use `--step prepare_references`, not `-entry`. The 26.x strict parser rejects the `-entry` CLI option outright. `--step` works on every Nextflow version.
 
 ## Quick start
 
-1. **Install** Nextflow (`>=23.10`) and Docker (or Singularity / Apptainer).
+**1. Stage the reference bundle** (one-off, ~25 GB):
 
-2. **Stage reference data** (one-off, ~20 GB per assembly):
+```bash
+nextflow run Biocentric/gvanno-nf -r main -latest -profile docker \
+    --step prepare_references \
+    --genome GRCh38 \
+    --refdata_dir /data/refs/gvanno-grch38 \
+    --refdata_mode download
+```
 
-   ```bash
-   nextflow run Biocentric/gvanno-nf -profile docker \
-       --step prepare_references \
-       --genome GRCh38 \
-       --refdata_dir /scratch/refs/gvanno \
-       --refdata_mode download
-   ```
+This downloads the gvanno annotation bundle, the Ensembl VEP 110 cache, and the reference FASTA, then re-encodes the FASTA to BGZF and indexes it. The resulting layout is **identical to upstream gvanno's**, so the same directory works for both this pipeline and the original `gvanno.py`.
 
-   The bundle layout under `--refdata_dir` is **identical to upstream gvanno's**, so the same directory works for both this pipeline and the original `gvanno.py`.
+Re-running this is cheap: if the bundle is already staged at the requested version, the download is skipped.
 
-3. **Write a samplesheet** (`samplesheet.csv`):
+**2. Write a samplesheet** (`samplesheet.csv`):
 
-   ```
-   sample,vcf,vcf_index
-   patientA,/data/A.vcf.gz,/data/A.vcf.gz.tbi
-   patientB,/data/B.vcf.gz,
-   ```
+```csv
+sample,vcf,vcf_index
+patientA,/data/A.vcf.gz,
+patientB,/data/B.vcf,
+```
 
-   `vcf_index` is optional and, in fact, ignored — the pipeline re-normalises and re-indexes every input, so plain uncompressed `.vcf` files work fine.
+**3. Annotate:**
 
-4. **Run**:
+```bash
+nextflow run Biocentric/gvanno-nf -r main -latest -profile docker \
+    --input samplesheet.csv \
+    --genome GRCh38 \
+    --refdata_dir /data/refs/gvanno-grch38 \
+    --outdir results
+```
 
-   ```bash
-   nextflow run Biocentric/gvanno-nf -profile docker \
-       --input samplesheet.csv \
-       --genome GRCh38 \
-       --refdata_dir /scratch/refs/gvanno \
-       --outdir results
-   ```
+> `-latest` matters when running straight from GitHub — Nextflow caches the repo under `~/.nextflow/assets/` and will otherwise re-run whatever revision it cached first.
 
-## Inputs
+## Input
 
-A single-sample VCF (≥ v4.2) per row in the samplesheet. Multi-allelic sites are decomposed automatically by `gvanno_validate_input.py`. We recommend bgzipping and indexing inputs with `tabix`. If your input VCF contains genotypes from multiple samples, the resulting TSV will contain one record **per sample variant**.
+One single-sample germline VCF (≥ v4.2) per samplesheet row.
 
-## Outputs
+| Column | Required | Notes |
+|---|---|---|
+| `sample` | yes | Unique ID, used to name outputs. Must match `[A-Za-z0-9._-]+`. |
+| `vcf` | yes | Path or URL to the VCF. Plain `.vcf` and bgzipped `.vcf.gz` both work. |
+| `vcf_index` | no | Accepted but **ignored** — `VALIDATE_VCF` re-normalises and re-indexes every input, so a pre-existing `.tbi` is never used. |
 
-For each sample, under `results/annotation/<sample>/`:
+Multi-allelic sites are decomposed automatically. If a VCF contains genotypes for multiple samples, the output TSV carries one record **per sample variant**.
+
+## Output
+
+```
+results/
+├── annotation/<sample>/
+│   ├── <sample>.gvanno.<assembly>.pass.tsv.gz     # PASS variants, finalised TSV
+│   └── logs/{*.vep.log, *.vcfanno.log}
+├── concat_vcfs/
+│   └── <sample>.gvanno.<assembly>.vcf.gz(.tbi)    # annotated VCF
+└── pipeline_info/                                  # Nextflow execution reports
+```
 
 | File | Description |
 |---|---|
-| `<sample>.gvanno.<assembly>.vcf.gz` (`.tbi`) | BGZF-compressed VCF with rich functional / clinical annotation INFO tags (CSQ, ClinVar, dbNSFP, gnomAD, CGC, …). |
-| `<sample>.gvanno.<assembly>.pass.tsv.gz` | Tab-separated values, one row per (variant × consequence). Same column set as upstream gvanno's `*.pass.tsv.gz`; the exact count (~190–220) depends on how many INFO tags your input VCF carries through. |
-| `logs/*.vep.log`, `logs/*.vcfanno.log` | Per-step logs. |
+| `*.vcf.gz` (`.tbi`) | BGZF-compressed VCF with the full functional / clinical annotation INFO tags (CSQ, ClinVar, dbNSFP, gnomAD, CGC, …). |
+| `*.pass.tsv.gz` | Tab-separated, one row per (variant × consequence). Same column set as upstream gvanno's `*.pass.tsv.gz`; the exact count (~190–220) depends on how many INFO tags your input VCF carries through. |
 
-Plus standard Nextflow execution reports under `results/pipeline_info/` (`execution_report.html`, `execution_timeline.html`, `pipeline_dag.html`, `execution_trace.txt`).
+Every annotation tag is documented in the **header of the annotated VCF** — the TSV column names match the VCF INFO tag IDs.
 
-Documentation of every annotation tag is in the **header of the annotated VCF** — the column names of the TSV match the VCF INFO tag IDs.
+## Parameters
 
-## Tunables (mirror of upstream gvanno's CLI flags)
+### Core
 
-| Pipeline param | Upstream `gvanno.py` flag | Default |
+| Param | Default | Description |
+|---|---|---|
+| `--input` | — | Samplesheet CSV (required for `--step annotate`) |
+| `--outdir` | `./results` | Output directory |
+| `--genome` | `GRCh38` | `GRCh37` or `GRCh38` |
+| `--step` | `annotate` | `annotate` or `prepare_references` |
+
+### Reference data
+
+| Param | Default | Description |
+|---|---|---|
+| `--refdata_dir` | — | Bundle location (source when prestaged, destination when downloading). Required. |
+| `--refdata_mode` | `prestaged` | `prestaged` or `download` |
+| `--refdata_version` | `20231224` | Bundle version, pinned to upstream gvanno 1.7.0 |
+| `--refdata_url_base` | Oslo, then GitHub Releases | Ordered mirror list, tried in turn |
+
+### VEP — mirrors upstream gvanno's flags exactly
+
+| Param | Upstream `gvanno.py` flag | Default |
 |---|---|---|
 | `--vep_n_forks` | `--vep_n_forks` | 4 |
 | `--vep_buffer_size` | `--vep_buffer_size` | 500 |
@@ -137,77 +178,92 @@ Documentation of every annotation tag is in the **header of the annotated VCF** 
 | `--vcfanno_n_processes` | `--vcfanno_n_processes` | 4 |
 | `--oncogenicity_annotation` | `--oncogenicity_annotation` | false (requires `--vep_lof_prediction`) |
 
-Performance knobs added by this pipeline:
+### Added by this pipeline
 
 | Param | Effect |
 |---|---|
-| `--scatter_by chromosome` | Split per-contig and run VEP/vcfanno in parallel; gathered with `bcftools concat`. Default `none`. |
-| `--max_cpus` / `--max_memory` / `--max_time` | Resource caps applied to all process labels. |
-| `-profile slurm,awsbatch,…` | Standard Nextflow executor profiles. |
+| `--scatter_by chromosome` | Split per contig and run VEP/vcfanno in parallel, gathered with `bcftools concat`. Default `none`. |
+| `--keep_intermediates` | Retain intermediate VCFs and logs |
+| `--max_cpus` / `--max_memory` / `--max_time` | Resource caps applied to all process labels |
+| `-profile docker,singularity,apptainer,conda,slurm,…` | Standard Nextflow executor/container profiles |
 
-What you don't need anymore from upstream: `--container`, `--force_overwrite`, `--debug`, `--docker_uid`, `--gvanno_dir`, `--sif_file` are all subsumed by Nextflow's profile / resume / container machinery.
+Upstream's `--container`, `--force_overwrite`, `--debug`, `--docker_uid`, `--gvanno_dir` and `--sif_file` have no equivalent here — Nextflow's profile, `-resume` and container machinery replace them.
 
-## Credit and citation
+## Annotation resources
 
-**The science of gvanno is not ours.** This pipeline is a thin re-orchestration of the upstream [`sigven/gvanno`](https://github.com/sigven/gvanno) project. All annotation logic, all reference data curation, all helper scripts (`gvanno_validate_input.py`, `gvanno_vep.py`, `gvanno_vcfanno.py`, `gvanno_summarise.py`, `gvanno_finalize.py`), the [`sigven/gvanno:1.7.0`](https://hub.docker.com/r/sigven/gvanno) Docker image, and the curated annotation bundle are the work of [**Sigve Nakken**](https://github.com/sigven) and colleagues at the [University of Oslo](https://www.uio.no/) and [Oslo University Hospital](https://www.ous-research.no/).
+Pinned to upstream gvanno 1.7.0, reference bundle `20231224`:
 
-Please cite gvanno (and the underlying tools — VEP, vcfanno, dbNSFP, ClinVar, gnomAD, GENCODE, etc.) when you use this pipeline. See [`CITATIONS.md`](CITATIONS.md).
-
-If you have questions about the **annotations themselves** (what a tag means, why a variant is classified a certain way, when a database was last updated), the right place to ask is the upstream gvanno project: <https://github.com/sigven/gvanno>, contact `sigven AT ifi.uio.no`.
-
-If you have questions specific to the **Nextflow pipeline** (samplesheet handling, executor profiles, resume / scatter behaviour, cluster execution), open an issue on this repo: <https://github.com/Biocentric/gvanno-nf/issues>.
-
-## Why a separate pipeline (and not a fork of `sigven/gvanno`)?
-
-Upstream gvanno is structured as a Python script that builds and runs Docker commands. The shape of that codebase doesn't naturally fit a Nextflow refactor — DSL2 modules, samplesheets, channels, and per-process resource declarations are a different idiom. Forking would have left us either (a) carrying every upstream change manually, or (b) diverging silently. By keeping this as a separate repo that *consumes* upstream gvanno's container and reference bundle verbatim — pinned to a specific upstream version — we get clean version tracking on both sides:
-
-- Updating gvanno to a newer release is a one-line `params.refdata_version` + container tag change here.
-- Upstream gvanno can keep evolving without ever needing to think about Nextflow.
-
-The only thing this repository contains, in terms of "science", is glue code calling upstream's helpers. Everything material is downstream of `sigven/gvanno`.
-
-## Maintainer note: populating the GitHub Releases mirror
-
-`params.refdata_url_base` lists `https://github.com/Biocentric/gvanno-nf/releases/download/refdata-<version>` as a fallback mirror. Until that release is populated, the URL returns 404 and `BUNDLE_FETCH` transparently falls back to the upstream Oslo mirror.
-
-To populate it (one-shot, per refdata version):
-
-```bash
-gh auth login                                    # if not already
-bash scripts/publish-refdata-mirror.sh           # both assemblies
-# or:
-bash scripts/publish-refdata-mirror.sh grch37    # one assembly
-```
-
-Requires `gh`, `curl`, `split`, `sha256sum`, ~10 GB free disk. Idempotent — re-running skips assets already on the release.
+- [**VEP**](http://www.ensembl.org/info/docs/tools/vep/index.html) v110 (GENCODE v44 / v19)
+- [**dbNSFP**](https://sites.google.com/site/jpopgen/dbNSFP) v4.5 (November 2023)
+- [**gnomAD**](http://gnomad.broadinstitute.org/) r2.1 (October 2018), via VEP
+- [**dbSNP**](http://www.ncbi.nlm.nih.gov/SNP/) build 154, via VEP
+- [**ClinVar**](http://www.ncbi.nlm.nih.gov/clinvar/) (December 2023)
+- [**CancerMine**](http://bionlp.bcgsc.ca/cancermine/) v50 (March 2023)
+- [**Cancer Hotspots**](https://www.cancerhotspots.org/)
+- [**NHGRI-EBI GWAS Catalog**](https://www.ebi.ac.uk/gwas/home) (November 2023)
+- [**ncER**](https://www.nature.com/articles/s41467-019-13212-3) non-coding essential regulation scores
 
 ## Testing
 
-Two minimal test profiles ship with the pipeline (each expects the matching gvanno bundle pre-staged under `--refdata_dir`):
-
 ```bash
 # GRCh37 — upstream gvanno example VCF (8871 variants)
-nextflow run Biocentric/gvanno-nf -profile docker,test --refdata_dir /scratch/refs/gvanno
+nextflow run Biocentric/gvanno-nf -profile docker,test \
+    --refdata_dir /data/refs/gvanno-grch37
 
-# GRCh38 — committed 11-variant fixture (assets/example.grch38.vcf)
-nextflow run Biocentric/gvanno-nf -profile docker,test_grch38 --refdata_dir /scratch/refs/gvanno-grch38
+# GRCh38 — committed 11-variant fixture
+nextflow run Biocentric/gvanno-nf -profile docker,test_grch38 \
+    --refdata_dir /data/refs/gvanno-grch38
 ```
 
-The GRCh38 fixture holds 11 canonical variants (BRAF V600E, JAK2 V617F, KRAS G12D, EGFR L858R, TP53 R175H, IDH1 R132H, PIK3CA E545K, NRAS Q61K, HFE C282Y, F5 Leiden, MTHFR C677T) spanning 9 chromosomes; every coordinate and reference allele was verified against the Ensembl GRCh38 REST API.
+Both expect the matching bundle already staged. The GRCh38 fixture ([`assets/example.grch38.vcf`](assets/example.grch38.vcf)) holds 11 canonical variants across 9 chromosomes; every coordinate and reference allele was verified against the Ensembl GRCh38 REST API, and the last run annotated each to the expected gene and protein change:
 
-## Status
+| Variant | Expected | | Variant | Expected |
+|---|---|---|---|---|
+| 1:11796321 G>A | MTHFR p.A222V | | 7:55191822 T>G | EGFR p.L858R |
+| 1:114713909 G>T | NRAS p.Q61K | | 7:140753336 A>T | BRAF p.V600E |
+| 1:169549811 C>T | F5 p.R534Q | | 9:5073770 G>T | JAK2 p.V617F |
+| 2:208248388 C>T | IDH1 p.R132H | | 12:25245350 C>T | KRAS p.G12D |
+| 3:179218303 G>A | PIK3CA p.E545K | | 17:7675088 C>T | TP53 p.R175H |
+| 6:26092913 G>A | HFE p.C282Y | | | |
 
-**v0.1.0dev** — both assemblies verified end-to-end:
+F5 is reported as `p.R534Q`; the familiar "Factor V Leiden R506Q" is the same variant numbered on the mature protein rather than the HGVS precursor. MTHFR `p.A222V` is the protein-level name for the well-known `c.677C>T`.
 
-- **GRCh37** (2026-05-01): upstream gvanno example VCF, 8871 variants, 8/8 processes, 1 m 18 s.
-- **GRCh38** (2026-07-31): reference bundle downloaded fresh from the Oslo mirror (3/3 processes, 29 m 50 s, 25 GB), then annotation on the 11-variant fixture (8/8 processes). Every variant resolved to the expected gene and protein change.
+## Credit and citation
 
-See [`CHANGELOG.md`](CHANGELOG.md) and [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) for what remains unverified (bit-identical diff vs upstream, `--scatter_by chromosome`, nf-test, CI).
+**The science of gvanno is not ours.** All annotation logic, all reference data curation, all helper scripts (`gvanno_validate_input.py`, `gvanno_vep.py`, `gvanno_vcfanno.py`, `gvanno_summarise.py`, `gvanno_finalize.py`), the [`sigven/gvanno:1.7.0`](https://hub.docker.com/r/sigven/gvanno) Docker image, and the curated annotation bundle are the work of [**Sigve Nakken**](https://github.com/sigven) and colleagues at the University of Oslo and Oslo University Hospital.
 
-### Disk space
+Please cite gvanno — and the underlying tools (VEP, vcfanno, dbNSFP, ClinVar, gnomAD, GENCODE, …) — when you use this pipeline. Full reference list in [`CITATIONS.md`](CITATIONS.md).
 
-GRCh38 needs noticeably more room than GRCh37 (VEP cache 20 GB vs 13 GB). Budget **~25 GB** for the staged bundle and **~45 GB peak** during setup, since the VEP cache tarball and its extraction briefly coexist. Point `--refdata_dir` at a volume with real headroom.
+**Where to ask questions:**
+
+- About the **annotations themselves** — what a tag means, why a variant is classified a certain way, when a database was last updated → the upstream project: <https://github.com/sigven/gvanno> (`sigven AT ifi.uio.no`).
+- About the **Nextflow pipeline** — samplesheets, executor profiles, resume/scatter behaviour, cluster execution → [issues on this repo](https://github.com/Biocentric/gvanno-nf/issues).
+
+## Why a separate repo, not a fork?
+
+Upstream gvanno is a Python script that builds and runs Docker commands. That shape doesn't map onto a Nextflow refactor — DSL2 modules, samplesheets, channels and per-process resource declarations are a different idiom, so a fork would have meant either hand-carrying every upstream change or diverging silently.
+
+Keeping this separate, and *consuming* upstream's container and reference bundle verbatim at a pinned version, gives clean version tracking on both sides:
+
+- Moving to a newer gvanno is a one-line change to `params.refdata_version` and the container tag.
+- Upstream gvanno never has to think about Nextflow.
+
+In terms of science, this repository contains only glue code calling upstream's helpers. Everything material is downstream of `sigven/gvanno`.
+
+## Maintainer note: the GitHub Releases mirror
+
+`params.refdata_url_base` lists `https://github.com/Biocentric/gvanno-nf/releases/download/refdata-<version>` as a fallback mirror. Until that release is populated the URL 404s and `BUNDLE_FETCH` falls through to the upstream Oslo mirror, so nothing breaks.
+
+To populate it (one-shot per refdata version):
+
+```bash
+gh auth login
+bash scripts/publish-refdata-mirror.sh            # both assemblies
+bash scripts/publish-refdata-mirror.sh grch38     # or just one
+```
+
+Needs `gh`, `curl`, `split`, `sha256sum` and ~10 GB free disk. The bundle is split into ≤2 GB chunks (GitHub's per-asset cap) with a `.parts.txt` manifest that `BUNDLE_FETCH` reassembles transparently. Idempotent — re-running skips assets already uploaded.
 
 ## License
 
-This pipeline is MIT-licensed (see [`LICENSE`](LICENSE)). The MIT license covers the **Nextflow glue code** in this repository only. The `sigven/gvanno` Docker image, the gvanno annotation bundle, and the underlying tools and databases (VEP, vcfanno, dbNSFP, ClinVar, gnomAD, GENCODE, …) are governed by their own licenses — please honour those when you use this pipeline.
+MIT (see [`LICENSE`](LICENSE)) — covering the **Nextflow glue code in this repository only**. The `sigven/gvanno` Docker image, the gvanno annotation bundle, and the underlying tools and databases (VEP, vcfanno, dbNSFP, ClinVar, gnomAD, GENCODE, …) are governed by their own licenses. Please honour those when you use this pipeline.
