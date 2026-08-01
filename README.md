@@ -17,12 +17,17 @@ A Nextflow (DSL2, nf-core style) pipeline for **functional and clinical annotati
 
 ## Status
 
+**v0.2.0dev** *(this branch)* — reference data modernisation, Phase 0 complete.
+The pipeline is unchanged and working; the reference bundle has not been
+rebuilt yet. See [Annotation resources](#annotation-resources).
+
 **v0.1.0dev** — both assemblies verified end to end.
 
 | Assembly | Reference staging | Annotation | Date |
 |---|---|---|---|
 | **GRCh37** | pre-staged bundle | 8/8 processes ✔ — upstream gvanno example VCF, 8871 variants, 1 m 18 s | 2026-05-01 |
 | **GRCh38** | 3/3 processes ✔ — fresh download, 25 GB, 29 m 50 s | 8/8 processes ✔ — 11-variant fixture, all resolved to the expected gene + protein change | 2026-07-31 |
+| **GRCh38** | pre-staged, sha256-verified | 8/8 processes ✔ in ~60 s — re-run as the v0.2.0 baseline, 189 columns × 11 rows, `EFFECT_PREDICTIONS` 11/11 | 2026-08-01 |
 
 Not yet verified: bit-identical diff against an upstream `gvanno.py` run, `--scatter_by chromosome`, nf-test coverage, CI. See [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) — it is kept honest and current.
 
@@ -191,17 +196,65 @@ Upstream's `--container`, `--force_overwrite`, `--debug`, `--docker_uid`, `--gva
 
 ## Annotation resources
 
-Pinned to upstream gvanno 1.7.0, reference bundle `20231224`:
+Currently pinned to upstream gvanno 1.7.0, reference bundle `20231224`:
 
-- [**VEP**](http://www.ensembl.org/info/docs/tools/vep/index.html) v110 (GENCODE v44 / v19)
-- [**dbNSFP**](https://sites.google.com/site/jpopgen/dbNSFP) v4.5 (November 2023)
-- [**gnomAD**](http://gnomad.broadinstitute.org/) r2.1 (October 2018), via VEP
-- [**dbSNP**](http://www.ncbi.nlm.nih.gov/SNP/) build 154, via VEP
-- [**ClinVar**](http://www.ncbi.nlm.nih.gov/clinvar/) (December 2023)
-- [**CancerMine**](http://bionlp.bcgsc.ca/cancermine/) v50 (March 2023)
-- [**Cancer Hotspots**](https://www.cancerhotspots.org/)
-- [**NHGRI-EBI GWAS Catalog**](https://www.ebi.ac.uk/gwas/home) (November 2023)
-- [**ncER**](https://www.nature.com/articles/s41467-019-13212-3) non-coding essential regulation scores
+| Resource | Version | Enters via |
+|---|---|---|
+| [**VEP**](http://www.ensembl.org/info/docs/tools/vep/index.html) | v110 (GENCODE v44 / v19) | container + cache |
+| [**gnomAD**](http://gnomad.broadinstitute.org/) | r2.1 (October 2018) | VEP cache |
+| [**dbSNP**](http://www.ncbi.nlm.nih.gov/SNP/) | build 154 | VEP cache |
+| [**ClinVar**](http://www.ncbi.nlm.nih.gov/clinvar/) | December 2023 | bundle (vcfanno) |
+| [**dbNSFP**](https://www.dbnsfp.org/) | v4.5 (November 2023) | bundle (vcfanno) |
+| [**NHGRI-EBI GWAS Catalog**](https://www.ebi.ac.uk/gwas/home) | November 2023 | bundle (vcfanno) |
+| [**ncER**](https://www.nature.com/articles/s41467-019-13212-3) | v1.0 (March 2019) | bundle (vcfanno) |
+| [**Cancer Hotspots**](https://www.cancerhotspots.org/) | v2 (2017) | bundle (summarise) |
+| [**CancerMine**](http://bionlp.bcgsc.ca/cancermine/) | v50 (March 2023) | bundle (gene xref) |
+| [**Pfam**](https://www.ebi.ac.uk/interpro/) | v36.0 | bundle (protein domains) |
+| [**UniProt**](https://www.uniprot.org/) | release 2023_05 | bundle (gene xref) |
+
+### Bringing these to 2026 — work in progress on `0.2.0`
+
+**Upstream gvanno is frozen.** Its last release was v1.7.0 (2023-12-29) and its
+last commit 2024-02-13, so `20231224` is the final bundle upstream will ever
+publish. Re-pinning to a newer upstream version is not an option — there is no
+newer version. To move the databases forward, this project has to produce the
+bundle itself.
+
+That work is split into two tracks:
+
+| | **Track A** → `v0.2.0` | **Track B** → `v0.3.0` |
+|---|---|---|
+| Container | `sigven/gvanno:1.7.0`, unchanged | rebuilt on VEP 115 |
+| Updates | ClinVar, dbNSFP, GWAS Catalog, Cancer Hotspots, CancerMine, Pfam, gene xref | + GENCODE 49, gnomAD v4.1, dbSNP b156 |
+
+The split follows a real seam in the design: five resources are plain data
+files that vcfanno reads, and the gvanno helpers do **no** version checking on
+the bundle — so they can be replaced under the existing container. The rest
+ride on the VEP cache, which is welded to the container by `gvanno_vep.py`'s
+`--cache_version`, and cannot move without rebuilding the image.
+
+Track A targets ClinVar 2026, dbNSFP v5.3.1, GWAS Catalog 2026, Cancer Hotspots
+v3, CancerMine v51 and a refreshed gene/transcript xref. ncER stays at v1.0 —
+no newer release exists.
+
+**Status: Phase 0 complete.** The bundle format contract has been extracted
+from `20231224` and is committed under
+[`refdata-builder/spec/`](refdata-builder/spec/), together with a
+[donor assessment](refdata-builder/spec/DONOR-ASSESSMENT.md) of the actively
+maintained PCGR 2.3 bundle. The rebuild itself has not run yet, so **the
+resources above are still the ones this branch produces.**
+
+Two findings from Phase 0 that shape the rest:
+
+- The `DBNSFP` INFO tag is **self-describing** — `dbnsfp.py` reads its
+  predictor list at runtime from the tag's own `Format:` string and only
+  requires that header and data agree on the field count. Updating dbNSFP is
+  therefore far less constrained than it first appeared. The catch is that a
+  mismatch fails *silently*, emitting no predictions at all while the run
+  reports success.
+- PCGR 2.3 covers **6 of the 8** rebuildable resources, two of them as
+  byte-compatible drop-ins. The gap is four gene-xref fields (Cancer Gene
+  Census ×3, OMIM ×1) that PCGR no longer carries.
 
 ## Testing
 

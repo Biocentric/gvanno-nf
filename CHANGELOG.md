@@ -1,5 +1,53 @@
 # Changelog
 
+## v0.2.0dev — reference data modernisation, Phase 0 (2026-08-01)
+
+Groundwork for bringing the annotation databases to 2026 versions. **No
+reference data has changed yet** — the pipeline still produces `20231224`
+annotations. This entry records what was established before the rebuild.
+
+**Upstream gvanno is frozen.** Last release v1.7.0 (2023-12-29), last commit
+2024-02-13, last bundle `20231224`. There is no newer upstream bundle to
+re-pin to, so this project has to produce the bundle itself. The README's
+previous claim that updating is "a one-line `params.refdata_version` change"
+no longer holds.
+
+Added `refdata-builder/`:
+- `spec/` — the bundle format contract extracted from `20231224`: every
+  vcfanno INFO-tag sidecar, VCF headers, tabular column layouts, both INFO tag
+  dictionaries, and a full file inventory. This is the build target.
+- `spec/DONOR-ASSESSMENT.md` — PCGR 2.3 (`20260620`) evaluated as a donor. It
+  covers 6 of the 8 rebuildable resources, two as byte-compatible drop-ins.
+- `spec/BASELINE.md` — the run the Phase 2 gate diffs against.
+- `steps/capture-spec.sh` — regenerates `spec/` from any bundle.
+
+Findings that change the plan:
+
+- **The `DBNSFP` tag is self-describing.** `dbnsfp.py` does not hardcode a
+  predictor list; it parses one at runtime from the tag's own `Format:` string
+  (index 6 onward, `_score`/`_pred` stripped) and only requires header and data
+  to agree on the field count. Updating dbNSFP is far less constrained than
+  assumed. But a mismatch **fails silently** — it returns no predictions while
+  the run reports success — so `EFFECT_PREDICTIONS` needs an explicit
+  non-empty assertion in the gate.
+- **dbNSFP v5.3 drops `LRT`, `FATHMM`, `FATHMM_MKL_coding` and `Aloft`** and
+  adds ten predictors (AlphaMissense, REVEL, CADD, ClinPred, ESM1b, MutFormer,
+  PHACTboost, PolyPhen2_HVAR, VEST4, FATHMM_xf). `DBNSFP_ALOFTPRED`,
+  `DBNSFP_FATHMM` and `DBNSFP_FATHMM_MKL` will disappear from the output. The
+  gate's "identical column set" rule is amended: VEP-derived and `NCER_*`
+  columns must not drift; `DBNSFP_*` membership is expected to change.
+- **Four gene-xref fields have no donor** — `cgc_tier`, `cgc_somatic`,
+  `cgc_germline` (Cancer Gene Census) and `mim_phenotype_id` (OMIM). PCGR 2.3
+  no longer carries them. Both sources are free for non-commercial use but
+  need accounts, so this step cannot run unattended. It is the critical path.
+- The bundle ships four resources not previously documented here: Pfam v36.0
+  protein domains, a 107 MB ClinVar TSV used for trait resolution, a second
+  gene-xref BED (`pc_nopad`), and `hotspot_long.tsv.gz`.
+
+`.gitignore` excluded `*.vcf`/`*.tsv` wholesale, which silently dropped the
+captured VCF headers and both INFO tag dictionaries; added a negation for
+`refdata-builder/spec/`.
+
 ## v0.1.0dev — GRCh38 verified end-to-end (2026-07-31)
 
 Live run on hephaestus (Nextflow 26.04.3 / Docker): reference download 3/3 ✔ (29m50s, 25 GB), annotation 8/8 ✔. All 11 fixture variants resolved to the expected gene + protein change.
