@@ -18,7 +18,7 @@ OUTDIR     ?= $(BUILDDIR)/out
 PRIOR      ?= $(BUILDDIR)/ref-20231224/data/$(ASSEMBLY)
 STEPS      := ./steps
 
-.PHONY: all fetch cgc mim spec clean help
+.PHONY: all fetch cgc mim clinvar spec clean help
 .DEFAULT_GOAL := help
 
 help:
@@ -50,6 +50,31 @@ mim: | $(OUTDIR)
 	    -i $(SRCDIR)/mim2gene_medgen \
 	    -u $(OUTDIR)/prior_mim.tsv \
 	    -o $(OUTDIR)/mim_phenotype.tsv
+
+## clinvar — build clinvar.vcf.gz + clinvar.tsv.gz from NCBI directly.
+##           NOT lifted from the PCGR donor: PCGR is a somatic annotator and
+##           its ClinVar is missing germline records (the gate caught F5
+##           Leiden, VariationID 642, absent from it).
+CLINVAR_RELEASE ?= 20260728
+clinvar: | $(OUTDIR)
+	$(STEPS)/build-clinvar.py \
+	    --vcf        $(SRCDIR)/clinvar_$(CLINVAR_RELEASE).$(ASSEMBLY).vcf.gz \
+	    --summary    $(SRCDIR)/variant_summary.txt.gz \
+	    --citations  $(SRCDIR)/var_citations.txt \
+	    --assembly   $(if $(filter grch37,$(ASSEMBLY)),GRCh37,GRCh38) \
+	    --out-vcf    $(OUTDIR)/clinvar.vcf.gz \
+	    --out-tsv    $(OUTDIR)/clinvar.tsv.gz
+	@docker run --rm -v $(BUILDDIR):/w --entrypoint /bin/bash $(CONTAINER) -c '\
+	  set -e; cd /w/out; \
+	  { zcat clinvar.vcf.gz | grep "^#"; \
+	    zcat clinvar.vcf.gz | grep -v "^#" | sort -k1,1 -k2,2n; } > clinvar.sorted.vcf; \
+	  bgzip -f -c clinvar.sorted.vcf > clinvar.bgz.vcf.gz; \
+	  tabix -f -p vcf clinvar.bgz.vcf.gz; rm -f clinvar.sorted.vcf'
+	@mv -f $(OUTDIR)/clinvar.bgz.vcf.gz     $(OUTDIR)/clinvar.final.vcf.gz
+	@mv -f $(OUTDIR)/clinvar.bgz.vcf.gz.tbi $(OUTDIR)/clinvar.final.vcf.gz.tbi
+	@echo "built $(OUTDIR)/clinvar.final.vcf.gz — install with assemble-bundle.sh"
+
+CONTAINER ?= sigven/gvanno:1.7.0
 
 ## spec — regenerate the format contract from a bundle
 spec:

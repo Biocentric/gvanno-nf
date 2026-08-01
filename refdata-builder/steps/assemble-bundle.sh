@@ -77,10 +77,28 @@ done
 log "carry   ncer ($(du -h "$D/misc/bed/ncer/ncer.bed.gz" | cut -f1), from 20231224)"
 
 # --------------------------------------------------------------------------
-# 3. ClinVar VCF — PCGR renamed REVIEW_STATUS_STARS to GOLD_STARS and added two
-#    tags gvanno does not declare. gvanno_finalize.py and the TSV column
-#    contract expect the old name, so rename back and drop the extras.
+# 3. ClinVar VCF.
+#
+#    NOTE: the donor path below is retained only as a fallback. ClinVar should
+#    be built from NCBI with build-clinvar.py (`make clinvar`), because PCGR is
+#    a somatic annotator and its ClinVar VCF is missing germline records this
+#    pipeline needs -- the gate caught F5 p.R534Q (Factor V Leiden,
+#    VariationID 642, expert-panel Pathogenic) absent from it while present in
+#    the 20231224 bundle. If $BUILD/out/clinvar.final.vcf.gz exists, use it.
 # --------------------------------------------------------------------------
+if [ -f "$BUILD/out/clinvar.final.vcf.gz" ]; then
+    log "install clinvar from NCBI build (preferred)"
+    cp -f "$BUILD/out/clinvar.final.vcf.gz"     "$D/variant/vcf/clinvar/clinvar.vcf.gz"
+    cp -f "$BUILD/out/clinvar.final.vcf.gz.tbi" "$D/variant/vcf/clinvar/clinvar.vcf.gz.tbi"
+    cp -f "$BUILD/out/clinvar.tsv.gz"           "$D/variant/tsv/clinvar/clinvar.tsv.gz"
+    cp -f "$OLD/variant/vcf/clinvar/clinvar.vcfanno.vcf_info_tags.txt" \
+          "$D/variant/vcf/clinvar/clinvar.vcfanno.vcf_info_tags.txt"
+    log "        $(du -h "$D/variant/vcf/clinvar/clinvar.vcf.gz" | cut -f1) vcf, $(du -h "$D/variant/tsv/clinvar/clinvar.tsv.gz" | cut -f1) tsv"
+    SKIP_DONOR_CLINVAR=1
+fi
+
+if [ "${SKIP_DONOR_CLINVAR:-0}" != "1" ]; then
+log "WARNING: falling back to the PCGR ClinVar donor — run 'make clinvar' instead"
 log "transform clinvar vcf (CLINVAR_GOLD_STARS -> CLINVAR_REVIEW_STATUS_STARS)"
 DROP=CLINVAR_CONTRIB_CLNS_GERMLINE,CLINVAR_PHENOTYPE_STATUS
 # bcftools in sigven/gvanno:1.7.0 predates --rename-annots, so drop the extra
@@ -128,6 +146,7 @@ zcat "$PCGR/variant/tsv/clinvar/clinvar.tsv.gz" \
   ' 2>"$BUILD/clinvar_tsv.warn" | gzip -c > "$D/variant/tsv/clinvar/clinvar.tsv.gz"
 [ -s "$BUILD/clinvar_tsv.warn" ] && cat "$BUILD/clinvar_tsv.warn"
 log "        clinvar tsv rows: $(zcat "$D/variant/tsv/clinvar/clinvar.tsv.gz" | wc -l)"
+fi   # end donor-ClinVar fallback
 
 # --------------------------------------------------------------------------
 # 5. protein_domain — PCGR carries 5 columns, gvanno wants 3, deduped
@@ -182,7 +201,7 @@ dbsnp = build 154
 dbnsfp = v5.3 (October 2025)
 gnomad = r2.1 (October 2018)
 gwas = from PCGR 20260620
-clinvar = 2026-06
+clinvar = 2026-07-28 (NCBI direct)
 gencode = 44/19
 cgc = v101 (2025, via PCGR 20250314)
 mim_phenotype = NCBI mim2gene_medgen unioned with 20231224

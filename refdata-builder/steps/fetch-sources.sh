@@ -124,6 +124,33 @@ if wanted ncbi_mim2gene; then
     [ -f mim2gene_medgen ] && log "        $(wc -l < mim2gene_medgen) rows"
 fi
 
+# 4b. ClinVar, direct from NCBI.
+#     NOT lifted from the PCGR donor: PCGR is a somatic annotator and its
+#     ClinVar VCF is missing germline records a germline pipeline needs — the
+#     gate caught F5 p.R534Q (Factor V Leiden, VariationID 642, expert-panel
+#     Pathogenic) absent from it while present in the 20231224 bundle.
+#     Pinned to a dated snapshot so builds are reproducible.
+CLINVAR_RELEASE=${CLINVAR_RELEASE:-20260728}
+if wanted clinvar; then
+    log "=== ClinVar $CLINVAR_RELEASE (NCBI) ==="
+    for asm in "${ASSEMBLIES[@]}"; do
+        case $asm in grch38) A=GRCh38 ;; grch37) A=GRCh37 ;; *) continue ;; esac
+        fetch "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_$A/archive_2.0/2026/clinvar_$CLINVAR_RELEASE.vcf.gz" \
+              "clinvar_$CLINVAR_RELEASE.$asm.vcf.gz" || \
+        fetch "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_$A/weekly/clinvar_$CLINVAR_RELEASE.vcf.gz" \
+              "clinvar_$CLINVAR_RELEASE.$asm.vcf.gz" || rc=1
+        fetch "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_$A/archive_2.0/2026/clinvar_$CLINVAR_RELEASE.vcf.gz.tbi" \
+              "clinvar_$CLINVAR_RELEASE.$asm.vcf.gz.tbi" || \
+        fetch "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_$A/weekly/clinvar_$CLINVAR_RELEASE.vcf.gz.tbi" \
+              "clinvar_$CLINVAR_RELEASE.$asm.vcf.gz.tbi" || rc=1
+    done
+    # assembly-independent companions: submitter counts, HGVSp, and citations
+    fetch "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz" \
+          variant_summary.txt.gz || rc=1
+    fetch "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/var_citations.txt" \
+          var_citations.txt || rc=1
+fi
+
 # 5. HGNC complete set — symbol authority + omim_id cross-check.
 #    NB: the old EBI path 404s; this Google mirror is the live one.
 if wanted hgnc; then
