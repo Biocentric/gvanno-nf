@@ -141,22 +141,32 @@ zcat "$PCGR/misc/tsv/protein_domain/protein_domain.tsv.gz" \
 log "        pfam entries: $(( $(zcat "$D/misc/tsv/protein_domain/protein_domain.tsv.gz" | wc -l) - 1 ))"
 
 # --------------------------------------------------------------------------
-# 6. vcf_infotags — regenerate the DBNSFP_* block from the donor's own header
-#    so the declared output tags can never drift from the predictor set.
-#    dbnsfp.py derives algorithm names by stripping _score/_pred and lowercasing;
-#    gvanno declares them as DBNSFP_<UPPER>, with non-alphanumerics as '_'.
+# 6. vcf_infotags — carry the DBNSFP_* block over UNCHANGED.
+#
+#    An earlier version generated these names from the donor's Format string.
+#    That is wrong. dbnsfp.py discovers the *algorithm list* dynamically from
+#    the header, but maps each one to an output tag through a HARDCODED
+#    17-entry algo_mapping dict in the container:
+#
+#        'gerp_rs' -> 'DBNSFP_GERP'      (not DBNSFP_GERP_RS)
+#        'aloft'   -> 'DBNSFP_ALOFTPRED'
+#        'metarnn' -> 'DBNSFP_META_RNN'  ... etc
+#
+#    Derived names miss, and cyvcf2 raises on an undeclared INFO tag:
+#        Exception: not able to set: DBNSFP_GERP -> 5.08 (-1)
+#
+#    So the emittable tag set is fixed by the container, not by the data. The
+#    prior bundle's 17 declarations already match algo_mapping exactly — copy
+#    them. dbNSFP v5.3's new predictors (AlphaMissense, REVEL, CADD, ...) are
+#    still parsed and still appear in the combined EFFECT_PREDICTIONS string;
+#    they simply get no column of their own until Track B rebuilds the
+#    container. The four predictors v5.3 drops leave their tags declared but
+#    unpopulated, which is harmless.
 # --------------------------------------------------------------------------
-log "generate  vcf_infotags_gvanno.tsv (DBNSFP_* block from the donor header)"
-FMT=$(grep -o 'Format: [^"]*' "$D/variant/vcf/dbnsfp/dbnsfp.vcfanno.vcf_info_tags.txt" | sed 's/^Format: //')
-grep -v '^DBNSFP_' "$OLD/vcf_infotags_gvanno.tsv" > "$D/vcf_infotags_gvanno.tsv"
-echo "$FMT" | tr '|' '\n' | tail -n +7 | while read -r a; do
-    [ -z "$a" ] && continue
-    tag=$(echo "$a" | sed -E 's/(_score|_pred)$//' | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g')
-    printf 'DBNSFP_%s\t.\tString\t"Variant effect prediction from dbNSFP (%s)"\tgvanno\n' \
-           "$tag" "$(echo "$a" | sed -E 's/(_score|_pred)$//')"
-done >> "$D/vcf_infotags_gvanno.tsv"
-cp -f "$OLD/vcf_infotags_vep.tsv" "$D/vcf_infotags_vep.tsv"
-log "        DBNSFP_* tags declared: $(grep -c '^DBNSFP_' "$D/vcf_infotags_gvanno.tsv") (was $(grep -c '^DBNSFP_' "$OLD/vcf_infotags_gvanno.tsv"))"
+log "generate  vcf_infotags_gvanno.tsv (DBNSFP_* block carried over verbatim)"
+cp -f "$OLD/vcf_infotags_gvanno.tsv" "$D/vcf_infotags_gvanno.tsv"
+cp -f "$OLD/vcf_infotags_vep.tsv"    "$D/vcf_infotags_vep.tsv"
+log "        DBNSFP_* tags declared: $(grep -c '^DBNSFP_' "$D/vcf_infotags_gvanno.tsv") (fixed by the container's algo_mapping)"
 
 # --------------------------------------------------------------------------
 # 7. RELEASE_NOTES
