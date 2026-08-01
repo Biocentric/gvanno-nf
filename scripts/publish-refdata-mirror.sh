@@ -33,6 +33,11 @@ UPSTREAM="${UPSTREAM:-http://insilico.hpc.uio.no/pcgr/gvanno}"
 WORKDIR="${WORKDIR:-./.refdata-mirror}"
 CHUNK_SIZE="${CHUNK_SIZE:-1900M}"
 
+# SOURCE_DIR: directory holding locally built tarballs. Set this for bundles we
+# build ourselves (20260801 onward) — those do not exist upstream, so there is
+# nothing to download. Falls back to UPSTREAM when a bundle is not found there.
+SOURCE_DIR="${SOURCE_DIR:-}"
+
 ASSEMBLIES=("${@:-grch37 grch38}")
 
 echo "[publish] repo:    ${REPO}"
@@ -60,11 +65,22 @@ fi
 # ----------------------------------------------------------------------------
 if ! gh release view "${TAG}" --repo "${REPO}" >/dev/null 2>&1; then
     echo "[publish] creating release ${TAG}"
-    gh release create "${TAG}" \
-        --repo "${REPO}" \
-        --title "refdata bundle ${REFDATA_VERSION} (mirror of upstream gvanno)" \
-        --notes "Mirror of the gvanno reference bundle ${REFDATA_VERSION} as published by Sigve Nakken at https://github.com/sigven/gvanno. Hosted here so \`Biocentric/gvanno-nf\` has a redundant download path that does not depend on the upstream Oslo mirror staying online. Each assembly's bundle is split into ${CHUNK_SIZE} chunks; \`*.parts.txt\` is the manifest of chunk filenames. The pipeline's BUNDLE_FETCH module reassembles chunks transparently." \
-        --prerelease=false
+    # Bundles we build ourselves need different provenance wording from the
+    # ones that merely mirror upstream — do not claim Sigve Nakken published
+    # a bundle this project assembled.
+    if [ -n "${SOURCE_DIR}" ]; then
+        TITLE="refdata bundle ${REFDATA_VERSION} (built by gvanno-nf)"
+        NOTES="Reference bundle ${REFDATA_VERSION}, assembled by \`Biocentric/gvanno-nf\`'s refdata-builder. Upstream gvanno has been frozen since v1.7.0 (2023-12-29) and publishes no bundle newer than 20231224, so this one is built here.
+
+Annotation content is derived from NCBI ClinVar, the PCGR reference bundles (Sigve Nakken, University of Oslo), NCBI mim2gene_medgen and the Cancer Gene Census. The pipeline layout, the helper scripts that consume it, and the science remain the work of the upstream gvanno and PCGR projects — please cite them. Individual databases retain their own licences; dbNSFP in particular is CC BY-NC-ND (academic / non-commercial use).
+
+Each assembly's bundle is split into ${CHUNK_SIZE} chunks; \`*.parts.txt\` lists the chunk filenames and \`*.sha256\` their checksums. The pipeline's BUNDLE_FETCH module reassembles chunks transparently."
+    else
+        TITLE="refdata bundle ${REFDATA_VERSION} (mirror of upstream gvanno)"
+        NOTES="Mirror of the gvanno reference bundle ${REFDATA_VERSION} as published by Sigve Nakken at https://github.com/sigven/gvanno. Hosted here so \`Biocentric/gvanno-nf\` has a redundant download path that does not depend on the upstream Oslo mirror staying online. Each assembly's bundle is split into ${CHUNK_SIZE} chunks; \`*.parts.txt\` is the manifest of chunk filenames. The pipeline's BUNDLE_FETCH module reassembles chunks transparently."
+    fi
+    gh release create "${TAG}" --repo "${REPO}" --title "${TITLE}" \
+        --notes "${NOTES}" --prerelease=false
 fi
 
 upload() {
@@ -86,12 +102,21 @@ mirror_one() {
     echo
     echo "=== ${assembly} ==="
 
-    # 2. download bundle from upstream if not cached
-    if [ ! -f "${local_path}" ]; then
+    # 2. obtain the bundle: prefer a local build, else download from upstream
+    if [ -f "${local_path}" ]; then
+        echo "[publish] cached: ${local_path}"
+    elif [ -n "${SOURCE_DIR}" ] && [ -f "${SOURCE_DIR}/${bundle}" ]; then
+        echo "[publish] using local build: ${SOURCE_DIR}/${bundle}"
+        ln -f "${SOURCE_DIR}/${bundle}" "${local_path}" 2>/dev/null \
+            || cp "${SOURCE_DIR}/${bundle}" "${local_path}"
+        if [ -f "${SOURCE_DIR}/${bundle}.sha256" ]; then
+            echo "[publish] verifying local build against its recorded sha256"
+            ( cd "${SOURCE_DIR}" && sha256sum -c "${bundle}.sha256" ) \
+                || { echo "[publish] CHECKSUM MISMATCH — refusing to publish"; exit 1; }
+        fi
+    else
         echo "[publish] downloading ${UPSTREAM}/${bundle}"
         curl -fSL --retry 5 -o "${local_path}" "${UPSTREAM}/${bundle}"
-    else
-        echo "[publish] cached: ${local_path}"
     fi
 
     # 3. split into chunks
