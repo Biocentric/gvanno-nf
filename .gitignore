@@ -14,3 +14,6 @@ __pycache__/
 # ...but keep committed test fixtures that live under assets/
 !assets/*.vcf
 !assets/*.vcf.gz
+
+# ...and the captured bundle format spec (headers/dictionaries only, no payload)
+!refdata-builder/spec/**

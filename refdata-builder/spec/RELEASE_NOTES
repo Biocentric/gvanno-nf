@@ -1,0 +1,12 @@
+##GVANNO_SOFTWARE_VERSION = 1.7.0
+##GVANNO_DB_VERSION = 20231224
+pfam = v36.0
+ncER = v1.0 (March 2019)
+uniprot = release 2023_05
+cancerhotspots = v2 (2017)
+dbsnp = build 154
+dbnsfp = v4.5 (November 2023)
+gnomad = r2.1 (October 2018)
+gwas = November 2023 (20231123)
+clinvar = December 2023 (20231203)
+gencode = 44/19

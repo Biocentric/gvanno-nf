@@ -1,0 +1,26 @@
+   6654451  ./gene/bed/gene_transcript_xref/gene_transcript_xref.bed.gz
+    141165  ./gene/bed/gene_transcript_xref/gene_transcript_xref.bed.gz.tbi
+   1654873  ./gene/bed/gene_transcript_xref/gene_transcript_xref_pc_nopad.bed.gz
+     84266  ./gene/bed/gene_transcript_xref/gene_transcript_xref_pc_nopad.bed.gz.tbi
+       911  ./gene/bed/gene_transcript_xref/gene_transcript_xref.vcfanno.vcf_info_tags.txt
+       320  ./gene/tsv/gene_transcript_xref/gene_transcript_xref_bedmap.tsv.gz
+  12249217  ./gene/tsv/gene_transcript_xref/gene_transcript_xref.tsv.gz
+2689973494  ./misc/bed/ncer/ncer.bed.gz
+   1160537  ./misc/bed/ncer/ncer.bed.gz.tbi
+       182  ./misc/bed/ncer/ncer.vcfanno.vcf_info_tags.txt
+    120832  ./misc/tsv/hotspot/hotspot_long.tsv.gz
+     82018  ./misc/tsv/hotspot/hotspot.tsv.gz
+    405268  ./misc/tsv/protein_domain/protein_domain.tsv.gz
+       316  ./RELEASE_NOTES
+ 106916952  ./variant/tsv/clinvar/clinvar.tsv.gz
+      1831  ./variant/vcf/clinvar/clinvar.vcfanno.vcf_info_tags.txt
+  83916045  ./variant/vcf/clinvar/clinvar.vcf.gz
+    523065  ./variant/vcf/clinvar/clinvar.vcf.gz.tbi
+       537  ./variant/vcf/dbnsfp/dbnsfp.vcfanno.vcf_info_tags.txt
+1100182296  ./variant/vcf/dbnsfp/dbnsfp.vcf.gz
+    831402  ./variant/vcf/dbnsfp/dbnsfp.vcf.gz.tbi
+       183  ./variant/vcf/gwas/gwas.vcfanno.vcf_info_tags.txt
+    109721  ./variant/vcf/gwas/gwas.vcf.gz
+     38389  ./variant/vcf/gwas/gwas.vcf.gz.tbi
+      9942  ./vcf_infotags_gvanno.tsv
+      9383  ./vcf_infotags_vep.tsv

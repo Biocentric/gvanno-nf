@@ -1,0 +1,1 @@
+##INFO=<ID=NCER_PERCENTILE,Number=.,Type=String,Description="Non-coding variant deleteriousness score from the ncER algorithm, based on 10bp resolution genome-wide percentile rank">

@@ -1,0 +1,76 @@
+tag	number	type	description	category
+Consequence	.	String	"Impact modifier for the consequence type (picked by VEP's --flag_pick_allele option)."	vep
+Gene	.	String	"Ensembl stable ID of affected gene (picked by VEP's --flag_pick_allele option)."	vep
+Feature_type	.	String	"Type of feature. Currently one of Transcript, RegulatoryFeature, MotifFeature (picked by VEP's --flag_pick_allele option)."	vep
+Feature	.	String	"Ensembl stable ID of feature (picked by VEP's --flag_pick_allele option)."	vep
+cDNA_position	.	String	"Relative position of base pair in cDNA sequence (picked by VEP's --flag_pick_allele option)."	vep
+CDS_position	.	String	"Relative position of base pair in coding sequence (picked by VEP's --flag_pick_allele option)."	vep
+Protein_position	.	String	"Relative position of amino acid in protein (picked by VEP's --flag_pick_allele option)."	vep
+Amino_acids	.	String	"Only given if the variant affects the protein-coding sequence (picked by VEP's --flag_pick_allele option)."	vep
+EXON	.	String	"The exon number (out of total number) (picked by VEP's --flag_pick_allele option)."	vep
+Codons	.	String	"The alternative codons with the variant base in upper case (picked by VEP's --flag_pick_allele option)."	vep
+Existing_variation	.	String	"Database identifiers for existing variants (picked by VEP's --flag_pick_allele option)."	vep
+DBSNPRSID	.	String	"dbSNP reference identifier (picked by VEP's --flag_pick_allele option)."	vep
+COSMIC_MUTATION_ID	.	String	"COSMIC reference identifier (picked by VEP's --flag_pick_allele option)."	vep
+IMPACT	.	String	"Impact modifier for the consequence type (picked by VEP's --flag_pick_allele option)."	vep
+VARIANT_CLASS	.	String	"Sequence Ontology variant class (picked by VEP's --flag_pick_allele option)."	vep
+SYMBOL	.	String	"Gene symbol (picked by VEP's --flag_pick_allele option)."	vep
+SYMBOL_SOURCE	.	String	"The source of the gene symbol (picked by VEP's --flag_pick_allele option)."	vep
+HGNC_ID	.	String	"HGNC gene identifier"	vep
+STRAND	1	String	"The DNA strand (1 or -1) on which the transcript/feature lies (picked by VEP's --flag_pick_allele option)."	vep
+ENSP	1	String	"The Ensembl protein identifier of the affected transcript (picked by VEP's --flag_pick_allele option)."	vep
+FLAGS	.	String	"Transcript quality flags: cds_start_NF: CDS 5', incomplete cds_end_NF: CDS 3' incomplete (picked by VEP's --flag_pick_allele option)."	vep
+SWISSPROT	.	String	"Best match UniProtKB/Swiss-Prot accession of protein product (picked by VEP's --flag_pick_allele option)."	vep
+MANE_SELECT	.	String	"Indicating if the transcript is the MANE Select for the gene (picked by VEP's --flag_pick_allele option)"	vep
+MANE_PLUS_CLINICAL	.	String	"Indicating if the transcript is the MANE Plus Clinical transcript for the gene (picked by VEP's --flag_pick_allele option)"	vep
+TREMBL	.	String	"Best match UniProtKB/TrEMBL accession of protein product (picked by VEP's --flag_pick_allele option)."	vep
+UNIPARC	.	String	"Best match UniParc accession of protein product (picked by VEP's --flag_pick_allele option)."	vep
+HGVSc	.	String	"The HGVS coding sequence name (picked by VEP's --flag_pick_allele option)."	vep
+HGVSp	.	String	"The HGVS protein sequence name (picked by VEP's --flag_pick_allele option)."	vep
+HGVS_OFFSET	.	String	"Indicates by how many bases the HGVS notations for this variant have been shifted (picked by VEP's --flag_pick_allele option)."	vep
+MOTIF_NAME	.	String	"The source and identifier of a transcription factor binding profile aligned at this position (picked by VEP's --flag_pick_allele option)."	vep
+MOTIF_POS	.	String	"The relative position of the variation in the aligned TFBP (picked by VEP's --flag_pick_allele option)."	vep
+HIGH_INF_POS	.	String	"A flag indicating if the variant falls in a high information position of a transcription factor binding profile (TFBP) (picked by VEP's --flag_pick_allele option)."	vep
+MOTIF_SCORE_CHANGE	.	String	"The difference in motif score of the reference and variant sequences for the TFBP (picked by VEP's --flag_pick_allele option)."	vep
+TRANSCRIPTION_FACTORS	.	String	"Associated transcription factors for binding site (picked by VEP's flag_pick_allele_gene option)."	vep
+REGULATORY_ANNOTATION	.	String	"Comma-separated list of all variant annotations of Feature_type RegulatoryFeature and MotifFeature. Format: <Consequence>|<Feature_type>|<Feature>|<BIOTYPE>|<MOTIF_NAME>|<MOTIF_POS>|<HIGH_INF_POS>|<MOTIF_SCORE_CHANGE>|<TRANSCRIPTION_FACTORS>"	vep
+CELL_TYPE	.	String	"List of cell types and classifications for regulatory feature (picked by VEP's --flag_pick_allele option)."	vep
+CANONICAL	.	String	"A flag indicating if the transcript is denoted as the canonical transcript for this gene (picked by VEP's --flag_pick_allele option)."	vep
+CCDS	.	String	"The CCDS identifier for this transcript, where applicable (picked by VEP's --flag_pick_allele option)."	vep
+INTRON	.	String	"The intron number (out of total number) (picked by VEP's --flag_pick_allele option)."	vep
+NearestExonJB	.	String	"Ensembl identifier of the exon, the distance to the exon boundary, the boundary type (start or end of exon) and the total length in nucleotides of the exon"	vep
+DOMAINS	.	String	"The source and identifier of any overlapping protein domains (picked by VEP's --flag_pick_allele option)."	vep
+DISTANCE	.	String	"Shortest distance from variant to transcript (picked by VEP's --flag_pick_allele option). For each ALT allele, in the same order as listed"	vep
+BIOTYPE	.	String	"Biotype of transcript or regulatory feature (picked by VEP's --flag_pick_allele option)."	vep
+TSL	.	String	"Transcript support level (picked by VEP's --flag_pick_allele option)"	vep
+PUBMED	.	String	"PubMed ID(s) of publications that cite existing variant - VEP"	vep
+PHENO	.	String	"Indicates if existing variant is associated with a phenotype, disease or trait - VEP"	vep
+GENE_PHENO	.	String	"Indicates if overlapped gene is associated with a phenotype, disease or trait - VEP"	vep
+ALLELE_NUM	.	String	"Allele number from input; 0 is reference, 1 is first alternate etc - VEP"	vep
+RefSeq	.	String	"Output aligned RefSeq mRNA identifier for transcript (picked by VEP's --flag_pick_allele option)."	vep
+PICK	1	String	"Indicates if this block of consequence data was picked by VEP's --flag_pick_allele option"	vep
+LoF	1	String	"Indicates Loss-of-function variant, as assessed by the LOFTEE VEP plugin (https://github.com/konradjk/loftee)"	vep
+LoF_filter	1	String	"Filters underlying low confidence (LC) LoF calls, as assessed by the LOFTEE VEP plugin (https://github.com/konradjk/loftee)"	vep
+LoF_flags	1	String	"LOFTEE flags, see (https://github.com/konradjk/loftee)"	vep
+LoF_info	1	String	"LOFTEE info, see (https://github.com/konradjk/loftee)"	vep
+gnomADg_AF	1	Float	"Alternate allele frequency (global) - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_AFR_AF	1	Float	"Alternate allele frequency in samples of African/African American ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_AMI_AF	1	Float	"Alternate allele frequency in samples of Amish ancestry - gnomad genome populations"	vep
+gnomADg_AMR_AF	1	Float	"Alternate allele frequency in samples of American ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_ASJ_AF	1	Float	"Alternate allele frequency in samples of Ashkenazi Jewish ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_EAS_AF	1	Float	"Alternate allele frequency in samples of East Asian ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_FIN_AF	1	Float	"Alternate allele frequency in samples of Finnish ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_MID_AF	1	Float	"Alternate allele frequency in samples of Mid-eastern ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_NFE_AF	1	Float	"Alternate allele frequency in samples of Non-Finnish European ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_OTH_AF	1	Float	"Alternate allele frequency in samples of Other ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADg_SAS_AF	1	Float	"Alternate allele frequency in samples of South Asian ancestry - gnomAD genome (v3.1.2) populations"	vep
+gnomADe_AF	1	Float	"Alternate allele frequency (global) - gnomAD exome (v2.1.1) populations"	vep
+gnomADe_AFR_AF	1	Float	"Alternate allele frequency in samples of African-American/African American ancestry - gnomAD exome (v2.1.1) populations"	vep
+gnomADe_AMR_AF	1	Float	"Alternate allele frequency in samples of Latino ancestry - gnomAD exome (v2.1.1) populations"	vep
+gnomADe_ASJ_AF	1	Float	"Alternate allele frequency in samples of Ashkenazi Jewish ancestry - gnomAD exome (v2.1.1) populations"	vep
+gnomADe_EAS_AF	1	Float	"Alternate allele frequency in samples of East Asian ancestry - gnomAD exome (v2.1.1) populations"	vep
+gnomADe_FIN_AF	1	Float	"Alternate allele frequency in samples of Finnish ancestry - gnomAD exome (v2.1.1) populations"	vep
+gnomADe_NFE_AF	1	Float	"Alternate allele frequency in samples of Non-Finnish European ancestry - gnomAD exome (v2.1.1) populations"	vep
+gnomADe_OTH_AF	1	Float	"Alternate allele frequency in samples of Other ancestry - gnomAD exome (v2.1.1) populations"	vep
+gnomADe_SAS_AF	1	Float	"Alternate allele frequency in samples of South Asian ancestry - gnomAD exome (v2.1.1) populations"	vep
+APPRIS	.	String	"Indicates principal isoform class of picked transcript, from APPRIS database (picked by VEP's --flag_pick_allele option)"	vep

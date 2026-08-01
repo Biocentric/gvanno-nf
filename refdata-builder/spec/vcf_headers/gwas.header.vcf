@@ -1,0 +1,6 @@
+##fileformat=VCFv4.2
+##INFO=<ID=GWAS_HIT,Number=.,Type=String,Description="SNP associated with disease phenotype from genome-wide association study, format: rsid|risk_allele|pmid|tag_snp|p_value|efo_id">
+##liftOverProgram=CrossMap,version=0.6.4,website=https://crossmap.readthedocs.io/en/latest/
+##liftOverChainFile=/Users/sigven/research/DB/chainFiles/hg19Tohg38.over.chain.gz
+##liftOverDate=November30,2023
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO

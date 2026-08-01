@@ -1,0 +1,2 @@
+chrom	pos	ref	alt	allele_id	variation_id	rsid	origin_simple	clinical_significance_concensus	review_status_concensus	num_submitters	no_phenotype	gold_stars	conflicted	pathogenic	benign	vus	somatic	class4	class5	class2	class1	class3	classification	variation_type	truncating_variant	nontruncating_variant	refseq_transcript_id	entrezgene	symbol	molecular_consequence	hgvs_p	hgvs_c	hgvs_p_short	molecular_effect	clinical_significance_somatic	pmid_somatic	cui_somatic	trait_somatic	cui	pmid	trait	VAR_ID	build
+# rows: 2335189

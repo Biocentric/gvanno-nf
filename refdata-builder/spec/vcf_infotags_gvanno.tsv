@@ -1,0 +1,85 @@
+tag	number	type	description	category
+AMINO_ACID_START	1	Integer	"Start position of amino acid subject to alteration"	gvanno
+AMINO_ACID_END	1	Integer	"End position of amino acid subject to alteration"	gvanno
+INTRON_POSITION	.	String	"Relative position of intron variant to nearest intron/exon junction"	gvanno
+EXON_POSITION	.	String	"Relative position of exon variant to nearest intron/exon junction"	gvanno
+LAST_EXON	0	Flag	"Indication of last exon (picked by VEP's --flag_pick_allele_gene option)."	gvanno
+LAST_INTRON	0	Flag	"Indication of last intron (picked by VEP's --flag_pick_allele_gene option)."	gvanno
+SPLICE_DONOR_RELEVANT	0	Flag	"Splice site variant located at the +3/4/5 position of the intron; reference nucleotide is a G or A at position +3, A at position +4, or G at position +5"	gvanno
+NULL_VARIANT	0	Flag	"Frameshift or stop-gained variant"	gvanno
+CDS_CHANGE	.	String	"Coding, transcript-specific sequence annotation (picked by VEP's --flag_pick_allele_gene option)"	gvanno
+HGVSp_short	.	String	"The HGVS protein sequence name, short version (picked by VEP's --flag_pick_allele_gene option)"	gvanno
+PROTEIN_CHANGE	.	String	"Protein change - three letter amino acids (picked by VEP's --flag_pick_allelle option)"	gvanno
+EXON_AFFECTED	.	String	"Exon affected by the variant (picked by VEP's flag_pick_allele_gene option)"	gvanno
+LOSS_OF_FUNCTION	0	Flag	"Loss-of-function variant - as classified by LOFTEE (HC only)"	gvanno
+EXONIC_STATUS	.	String	"Exonic (protein-altering and silent variants, including canonical splice donor/acceptor) vs. nonexonic status for primary variant consequence"	gvanno
+CODING_STATUS	.	String	"Coding (protein-altering, including canonical splice donor/acceptor) vs. noncoding status for primary variant consequence"	gvanno
+VEP_ALL_CSQ	.	String	"All transcript consequences (Consequence:SYMBOL:Feature_type:Feature:BIOTYPE) - VEP"	gvanno
+SYMBOL_ENTREZ	1	String	"Official gene symbol as provided by NCBI's Entrez gene - may deviate from old (i.e. GENCODE v19)  SYMBOL provided by VEP"	gvanno
+ENSEMBL_TRANSCRIPT_ID	.	String	"Ensembl transcript identifier"	gvanno
+ENSEMBL_GENE_ID	.	String	"Ensembl gene_identifier"	gvanno
+ENSEMBL_PROTEIN_ID	.	String	"Ensembl protein identifier"	gvanno
+REFSEQ_TRANSCRIPT_ID	.	String	"RefSeq transcript identifier"	gvanno
+REFSEQ_PROTEIN_ID	.	String	"RefSeq protein/peptide identifier"	gvanno
+ENTREZGENE	.	String	"Entrez gene identifier"	gvanno
+TRANSCRIPT_MANE_SELECT	.	String	"MANE select transcript identifer - one high-quality representative transcript per protein-coding gene that is well-supported by experimental data and represents the biology of the gene"	gvanno
+TRANSCRIPT_MANE_PLUS_CLINICAL	.	String	"MANE Plus Clinical transcript identifier - transcripts chosen to supplement MANE Select when needed for clinical variant reporting"	gvanno
+PRINCIPAL_ISOFORM_FLAG	.	String	"Indicates principal isoform flag from APPRIS database"	gvanno
+UNIPROT_ACC	.	String	"UniprotKB accession identifiers"	gvanno
+UNIPROT_ID	.	String	"UniProt KB identifier (picked by VEP's --flag_pick_allele_gene_option)"	gvanno
+PFAM_DOMAIN	.	String	"Pfam domain identfier (from VEP)"	gvanno
+PFAM_DOMAIN_NAME	.	String	"Protein domain name (Pfam - from VEP)"	gvanno
+CLINVAR_TRAITS_ALL	.	String	"Variant origin and associated traits for ClinVar variant"	gvanno
+TSG	0	Flag	"Indicates status of gene carrying a tumor suppressive role (support from multiple sources)"	gvanno
+TSG_RANK	.	String	"Relative strength of support for gene having a tumor suppressive role - percent rank from 0 to 100 (100 strongest rank)"	gvanno
+TSG_SUPPORT	.	String	"Source evidence for gene carrying a tumor suppressive role. Format: CGC_TIER<1/2>&NCG&CancerMine:num_citations"	gvanno
+ONCOGENE	0	Flag	"Indicates status of gene being proto-oncogenic (support from multiple sources)"	gvanno
+ONCOGENE_RANK	.	String	"Relative strength of support for gene having a proto-oncogenic role - percent rank from 0 to 100 (100 strongest rank)"	gvanno
+ONCOGENE_SUPPORT	.	String	"Source evidence for gene being proto-oncogenic. Format: CGC_TIER<1/2>&NCG&CancerMine:num_citations"	gvanno
+CGC_TIER	.	String	"Cancer Gene Census tier (1/2)"	gvanno
+CGC_SOMATIC	0	Flag	"Member of Cancer Gene Census (CGC) - somatic set"	gvanno
+CGC_GERMLINE	0	Flag	"Member of Cancer Gene Census (CGC) - germline set"	gvanno
+TCGA_DRIVER	0	Flag	"Cancer driver gene prediction by TCGA - Bailey et al., Cell, 2018 (TCGA pan-cancer study)"	gvanno
+NCG_DRIVER	0	Flag	"Cancer driver gene prediction by Network of Cancer Genes (NCG)"	gvanno
+GENCODE_TAG	.	String	"GENCODE transcript tags (basic etc)"	gvanno
+GENCODE_TRANSCRIPT_TYPE	.	String	"GENCODE transcript type"	gvanno
+PROB_HAPLOINSUFFICIENCY	1	Float	"dbNSFP_gene: Estimated probability of haploinsufficiency of the gene (from doi:10.1371/journal.pgen.1001154)"	gvanno
+PROB_EXAC_LOF_INTOLERANT	1	Float	"dbNSFP_gene: the probability of being loss-of-function intolerant (intolerant of both heterozygous and homozygous lof variants) based on ExAC r0.3 data"	gvanno
+PROB_EXAC_LOF_INTOLERANT_HOM	1	Float	"dbNSFP_gene: the probability of being intolerant of homozygous, but not heterozygous lof variants based on ExAC r0.3 data"	gvanno
+PROB_EXAC_LOF_TOLERANT_NULL	1	Float	"dbNSFP_gene: the probability of being tolerant of both heterozygous and homozygous lof variants based on ExAC r0.3 data"	gvanno
+PROB_EXAC_NONTCGA_LOF_INTOLERANT	1	Float	"dbNSFP_gene: the probability of being loss-of-function intolerant (intolerant of both heterozygous and homozygous lof variants) based on ExAC r0.3 nonTCGA subset"	gvanno
+PROB_EXAC_NONTCGA_LOF_INTOLERANT_HOM	1	Float	"dbNSFP_gene: the probability of being intolerant of homozygous, but not heterozygous lof variants based on ExAC r0.3 nonTCGA subset"	gvanno
+PROB_EXAC_NONTCGA_LOF_TOLERANT_NULL	1	Float	"dbNSFP_gene: the probability of being tolerant of both heterozygous and homozygous lof variants based on ExAC r0.3 nonTCGA subset"	gvanno
+PROB_GNOMAD_LOF_INTOLERANT	1	Float	"dbNSFP_gene: the probability of being loss-of-function intolerant (intolerant of both heterozygous and homozygous lof variants based on gnomAD 2.1 data"	gvanno
+PROB_GNOMAD_LOF_INTOLERANT_HOM	1	Float	"dbNSFP_gene: the probability of being intolerant of homozygous, but not heterozygous lof variants based on gnomAD 2.1 data"	gvanno
+PROB_GNOMAD_LOF_TOLERANT_NULL	1	Float	"dbNSFP_gene: the probability of being tolerant of both heterozygous and homozygous lof variants based on gnomAD 2.1 data"	gvanno
+ESSENTIAL_GENE_CRISPR	1	String	"dbNSFP_gene: Essential (E) or Non-essential phenotype-changing (N) based on large scale CRISPR experiments. from doi: 10.1126/science.aac7041"	gvanno
+ESSENTIAL_GENE_CRISPR2	1	String	"dbNSFP_gene: Essential (E), context-Specific essential (S), or Non-essential phenotype-changing (N) based on large scale CRISPR experiments. from http://dx.doi.org/10.1016/j.cell.2015.11.015"	gvanno
+EFFECT_PREDICTIONS	.	String	"All variant effect predictions from different algorithms, as provided by dbNSFP"	gvanno
+DBNSFP_ALOFTPRED	.	String	"Protein variant effect prediction from dbNSFP (ALoFT)"	gvanno
+DBNSFP_GERP	.	String	"Evolutionary constraint score from dbNSFP (GERP - Genomic Evolutionary Rate Profiling)"	gvanno
+DBNSFP_SIFT	.	String	"Protein variant effect prediction from dbNSFP (SIFT - Sorting Intolerant from Tolerant)"	gvanno
+DBNSFP_PROVEAN	.	String	"Protein variant effect prediction from dbNSFP (PROVEAN)"	gvanno
+DBNSFP_M_CAP	.	String	"Protein variant effect prediction from dbNSFP (M-CAP - Mendelian Clinically Applicable Pathogenicity)"	gvanno
+DBNSFP_MUTPRED	.	String	"Protein variant effect prediction from dbNSFP (MutPred)"	gvanno
+DBNSFP_META_RNN	.	String	"Protein variant effect prediction from dbNSFP (Ensemble prediction using deep learning)"	gvanno
+DBNSFP_MUTATIONTASTER	.	String	"Protein variant effect prediction from dbNSFP (MutationTaster)"	gvanno
+DBNSFP_MUTATIONASSESSOR	.	String	"Protein variant effect prediction from dbNSFP (MutationAssessor)"	gvanno
+DBNSFP_FATHMM	.	String	"Protein variant effect prediction (FATHMM)"	gvanno
+DBNSFP_FATHMM_MKL	.	String	"Protein variant effect prediction (FATHMM_MKL)"	gvanno
+DBNSFP_LIST_S2	.	String	"Protein variant effect prediction from dbNSFP (LIST-S2)"	gvanno
+DBNSFP_BAYESDEL_ADDAF	.	String	"Protein variant effect prediction from dbNSFP (BayesDel)"	gvanno
+DBNSFP_SPLICE_SITE_RF	.	String	"Splice site variant effect prediction from dbNSFP - random forest classifier"	gvanno
+DBNSFP_SPLICE_SITE_ADA	.	String	"Splice site variant effect prediction from dbNSFP - adaptive boosting"	gvanno
+DBNSFP_PRIMATEAI	.	String	"Protein variant effect prediction from dbNSFP (PrimateAI)"	gvanno
+DBNSFP_DEOGEN2	.	String	"Protein variant effect prediction from dbNSFP (Deogen2)"	gvanno
+MUTATION_HOTSPOT	.	String	"Known cancer mutation hotspot, as found in cancerhotspots.org. Format: GeneSymbol|Entrez_ID|CodonRefAA|Alt_AA|Q-value"	gvanno
+MUTATION_HOTSPOT_CANCERTYPE	.	String	"Tumor types associated with mutation hotspot. Format: TumorSite|SiteFrequency|VariantFrequency"	gvanno
+MUTATION_HOTSPOT_MATCH	.	String	"Type of hotspot match (by_hgvsp_principal, by_hgvsc_principal, by_hgvsp_nonprincipal, by_hgvsc_nonprincipal, by_codon_principal, by_codon_nonprincipal)"	gvanno
+ONCOGENICITY_SCORE	.	Float	"Accumulated oncogenicity score (ClinGen/VICC guidelines, Horak et al, Genet Med, 2022)"	gvanno
+ONCOGENICITY_CLASSIFICATION	.	String	"Oncogenicity classification (ClinGen/VICC guidelines, Horak et al, Genet Med, 2022)"	gvanno
+ONCOGENICITY_CLASSIFICATION_CODE	.	String	"Oncogenicity classification codes (ClinGen/VICC guidelines, Horak et al, Genet Med, 2022)"	gvanno
+NCER_PERCENTILE	.	String	"Non-coding variant deleteriousness score from the ncER algorithm, based on 10bp resolution genome-wide percentile rank"	gvanno
+GENOTYPE	1	String	"Verbose genotype annotation for each variant (homozygous/heterozygous)"	gvanno
+SAMPLE_ID	1	String	"Sample/case identifier"	gvanno
+VCF_SAMPLE_ID	1	String	"Sample name detected from VCF file"	gvanno

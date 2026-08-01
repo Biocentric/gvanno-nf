@@ -1,0 +1,16 @@
+##INFO=<ID=CLINVAR_MSID,Number=1,Type=Integer,Description="ClinVar - Measureset/Variant ID">
+##INFO=<ID=CLINVAR_CLNSIG,Number=.,Type=String,Description="ClinVar - clinical significance">
+##INFO=<ID=CLINVAR_CLNSIG_SOMATIC,Number=.,Type=String,Description="ClinVar - clinical significance - somatic state">
+##INFO=<ID=CLINVAR_PMID,Number=.,Type=Integer,Description="ClinVar - PubMed IDs - germline state">
+##INFO=<ID=CLINVAR_ENTREZGENE,Number=.,Type=String,Description="ClinVar - record Entrez gene ID">
+##INFO=<ID=CLINVAR_PMID_SOMATIC,Number=.,Type=Integer,Description="ClinVar - PubMed IDs - somatic state">
+##INFO=<ID=CLINVAR_CONFLICTED,Number=1,Type=Integer,Description="ClinVar - conflicting interpretations of record">
+##INFO=<ID=CLINVAR_VARIANT_ORIGIN,Number=.,Type=String,Description="ClinVar - variant origin">
+##INFO=<ID=CLINVAR_NUM_SUBMITTERS,Number=1,Type=Integer,Description="ClinVar - number of submitters for variant record">
+##INFO=<ID=CLINVAR_UMLS_CUI,Number=.,Type=String,Description="ClinVar - Associated UMLS concept unique identifiers (CUI) - germline state">
+##INFO=<ID=CLINVAR_UMLS_CUI_SOMATIC,Number=.,Type=String,Description="ClinVar - Associated UMLS concept unique identifiers - somatic state (CUI)">
+##INFO=<ID=CLINVAR_CLASSIFICATION,Number=.,Type=String,Description="ClinVar - Clinical significance of variant on a five-tiered scale">
+##INFO=<ID=CLINVAR_ALLELE_ID,Number=1,Type=Integer,Description="ClinVaR - allele ID">
+##INFO=<ID=CLINVAR_HGVSP,Number=.,Type=String,Description="ClinVar - Protein variant identifier - HGVS nomenclature">
+##INFO=<ID=CLINVAR_MOLECULAR_EFFECT,Number=.,Type=String,Description="ClinVar - Molecular effect(s) of variant">
+##INFO=<ID=CLINVAR_REVIEW_STATUS_STARS,Number=1,Type=Integer,Description="ClinVar - Rating of the variant (0-4 stars) with respect to level of review">
