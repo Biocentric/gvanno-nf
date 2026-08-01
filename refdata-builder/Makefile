@@ -18,7 +18,7 @@ OUTDIR     ?= $(BUILDDIR)/out
 PRIOR      ?= $(BUILDDIR)/ref-20231224/data/$(ASSEMBLY)
 STEPS      := ./steps
 
-.PHONY: all fetch cgc mim clinvar spec clean help
+.PHONY: all fetch cgc mim clinvar assemble xref verify package bundle spec clean help
 .DEFAULT_GOAL := help
 
 help:
@@ -76,9 +76,33 @@ clinvar: | $(OUTDIR)
 
 CONTAINER ?= sigven/gvanno:1.7.0
 
+## assemble — lift/transform/carry every donor resource into a bundle tree
+assemble:
+	$(STEPS)/assemble-bundle.sh -a $(ASSEMBLY) -v $(VERSION) -o $(BUNDLE)
+
+## xref — remap the gene/transcript xref and inject CGC + MIM (needs cgc, mim)
+xref:
+	$(STEPS)/build-gene-xref.sh -a $(ASSEMBLY) -o $(BUNDLE)
+
+## verify — assert the container's contract BEFORE running the pipeline.
+##          Both known failure modes are silent, so this is not optional.
+verify:
+	./verify/check_bundle.py $(BUNDLE) --assembly $(ASSEMBLY) --version $(VERSION)
+
+## package — sha256 manifest + tarball + tarball checksum
+package: verify
+	$(STEPS)/package-bundle.sh -a $(ASSEMBLY) -v $(VERSION) -b $(BUNDLE) -o $(DISTDIR)
+
+## bundle — the whole chain for one assembly
+bundle: fetch cgc mim clinvar assemble xref package
+
 ## spec — regenerate the format contract from a bundle
 spec:
 	$(STEPS)/capture-spec.sh $(PRIOR) spec
 
 clean:
 	rm -rf $(OUTDIR)
+
+VERSION ?= 20260801
+BUNDLE  ?= $(BUILDDIR)/bundle
+DISTDIR ?= $(BUILDDIR)/dist

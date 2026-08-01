@@ -237,24 +237,47 @@ Track A targets ClinVar 2026, dbNSFP v5.3.1, GWAS Catalog 2026, Cancer Hotspots
 v3, CancerMine v51 and a refreshed gene/transcript xref. ncER stays at v1.0 —
 no newer release exists.
 
-**Status: Phase 0 complete.** The bundle format contract has been extracted
-from `20231224` and is committed under
-[`refdata-builder/spec/`](refdata-builder/spec/), together with a
-[donor assessment](refdata-builder/spec/DONOR-ASSESSMENT.md) of the actively
-maintained PCGR 2.3 bundle. The rebuild itself has not run yet, so **the
-resources above are still the ones this branch produces.**
+**Status: bundle `20260801` builds and passes the validation gate on GRCh38.**
+What it contains:
 
-Two findings from Phase 0 that shape the rest:
+| Resource | `20231224` | `20260801` | Source |
+|---|---|---|---|
+| ClinVar | 2023-12 | **2026-07-28** | NCBI, direct |
+| dbNSFP | v4.5 | **v5.3** | PCGR 2.3 donor |
+| Cancer Hotspots | v2 (2017) | **v3 (2026)** | PCGR 2.3 donor |
+| GWAS Catalog | 2023-11 | **2026** | PCGR 2.3 donor |
+| Pfam | v36.0 | **2026** | PCGR 2.3 donor |
+| Cancer Gene Census | — | **v101 (2025)** | PCGR 2.2 bundle |
+| MIM phenotypes | 3,853 genes | **5,271 genes** | NCBI `mim2gene_medgen` ∪ prior |
+| Gene/transcript xref | Ensembl 110 | **GENCODE 49** | PCGR 2.3, remapped |
+| ncER | v1.0 (2019) | v1.0 — carried forward | no newer release exists |
+| VEP · GENCODE · gnomAD · dbSNP | 110 · v44 · r2.1 · b154 | *unchanged* | Track B |
 
-- The `DBNSFP` INFO tag is **self-describing** — `dbnsfp.py` reads its
-  predictor list at runtime from the tag's own `Format:` string and only
-  requires that header and data agree on the field count. Updating dbNSFP is
-  therefore far less constrained than it first appeared. The catch is that a
-  mismatch fails *silently*, emitting no predictions at all while the run
-  reports success.
-- PCGR 2.3 covers **6 of the 8** rebuildable resources, two of them as
-  byte-compatible drop-ins. The gap is four gene-xref fields (Cancer Gene
-  Census ×3, OMIM ×1) that PCGR no longer carries.
+**Every source is account-free.** COSMIC (Cancer Gene Census) and OMIM
+(`genemap2`) both gate downloads behind registration; the builder avoids them
+by lifting CGC from the PCGR 2.2-era bundle — PCGR 2.3 dropped those fields —
+and taking MIM from NCBI, which needs no account and covers more genes. The
+builder therefore runs unattended, with no stored credentials.
+
+Three findings worth carrying forward, each of which cost a build cycle:
+
+- **The `DBNSFP` tag is half self-describing.** `dbnsfp.py` reads the
+  *predictor list* at runtime from the tag's `Format:` string, but maps each
+  one to an output tag through a **hardcoded 17-entry dict** — `gerp_rs` →
+  `DBNSFP_GERP`, not `DBNSFP_GERP_RS`. So the emittable tag set is fixed by the
+  container. v5.3's new predictors (AlphaMissense, REVEL, CADD, ESM1b…) still
+  reach the combined `EFFECT_PREDICTIONS` string; they just get no column of
+  their own until Track B.
+- **PCGR's ClinVar is not safe for a germline pipeline.** The gate caught
+  F5 p.R534Q — Factor V Leiden, expert-panel Pathogenic — missing from it.
+  ClinVar is now built from NCBI directly.
+- **Both failure modes are silent.** A dbNSFP field-count mismatch empties
+  every prediction while the run still succeeds. `refdata-builder/verify/check_bundle.py`
+  asserts these at build time rather than hoping a smoke test notices.
+
+See [`refdata-builder/spec/`](refdata-builder/spec/) for the format contract,
+the [donor assessment](refdata-builder/spec/DONOR-ASSESSMENT.md), and the
+[baseline and gate criteria](refdata-builder/spec/BASELINE.md).
 
 ## Testing
 
