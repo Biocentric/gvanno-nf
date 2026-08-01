@@ -22,17 +22,32 @@ VERSION=20260801
 OUT=/mnt/big/gvanno-build/bundle
 SRC=/mnt/big/gvanno-refdata
 BUILD=/mnt/big/gvanno-build
+STEPOUT=
 CONTAINER=sigven/gvanno:1.7.0
 
-while getopts ":a:v:o:h" opt; do
+while getopts ":a:v:o:s:h" opt; do
     case $opt in
         a) ASM=$OPTARG ;;
         v) VERSION=$OPTARG ;;
         o) OUT=$OPTARG ;;
+        s) STEPOUT=$OPTARG ;;   # dir holding this assembly's built inputs
         h) sed -n '2,18p' "$0"; exit 0 ;;
         *) echo "unknown option -$OPTARG" >&2; exit 2 ;;
     esac
 done
+# Per-assembly step outputs. Defaults to $BUILD/out for grch38 and
+# $BUILD/out<NN> otherwise, so the two assemblies never share a directory.
+# An earlier version symlinked $BUILD/out per assembly; that silently gave
+# GRCh37 the wrong ClinVar when the symlink and the script disagreed.
+if [ -z "$STEPOUT" ]; then
+    case $ASM in
+        grch38) STEPOUT=$BUILD/out ;;
+        grch37) STEPOUT=$BUILD/out37 ;;
+        *)      STEPOUT=$BUILD/out-$ASM ;;
+    esac
+fi
+[ -d "$STEPOUT" ] || { echo "[assemble] ERROR: no step-output dir $STEPOUT" >&2; exit 1; }
+echo "[assemble] assembly=$ASM  step outputs=$STEPOUT"
 
 PCGR=$BUILD/pcgr-20260620/data/$ASM
 OLD=$BUILD/ref-20231224/data/$ASM
@@ -86,15 +101,20 @@ log "carry   ncer ($(du -h "$D/misc/bed/ncer/ncer.bed.gz" | cut -f1), from 20231
 #    VariationID 642, expert-panel Pathogenic) absent from it while present in
 #    the 20231224 bundle. If $BUILD/out/clinvar.final.vcf.gz exists, use it.
 # --------------------------------------------------------------------------
-if [ -f "$BUILD/out/clinvar.final.vcf.gz" ]; then
-    log "install clinvar from NCBI build (preferred)"
-    cp -f "$BUILD/out/clinvar.final.vcf.gz"     "$D/variant/vcf/clinvar/clinvar.vcf.gz"
-    cp -f "$BUILD/out/clinvar.final.vcf.gz.tbi" "$D/variant/vcf/clinvar/clinvar.vcf.gz.tbi"
-    cp -f "$BUILD/out/clinvar.tsv.gz"           "$D/variant/tsv/clinvar/clinvar.tsv.gz"
+if [ -f "$STEPOUT/clinvar.final.vcf.gz" ]; then
+    log "install clinvar from NCBI build: $STEPOUT/clinvar.final.vcf.gz"
+    cp -f "$STEPOUT/clinvar.final.vcf.gz"     "$D/variant/vcf/clinvar/clinvar.vcf.gz"
+    cp -f "$STEPOUT/clinvar.final.vcf.gz.tbi" "$D/variant/vcf/clinvar/clinvar.vcf.gz.tbi"
+    cp -f "$STEPOUT/clinvar.tsv.gz"           "$D/variant/tsv/clinvar/clinvar.tsv.gz"
     cp -f "$OLD/variant/vcf/clinvar/clinvar.vcfanno.vcf_info_tags.txt" \
           "$D/variant/vcf/clinvar/clinvar.vcfanno.vcf_info_tags.txt"
     log "        $(du -h "$D/variant/vcf/clinvar/clinvar.vcf.gz" | cut -f1) vcf, $(du -h "$D/variant/tsv/clinvar/clinvar.tsv.gz" | cut -f1) tsv"
     SKIP_DONOR_CLINVAR=1
+else
+    die "no NCBI ClinVar at $STEPOUT/clinvar.final.vcf.gz — run 'make clinvar' first.
+       Falling back to the PCGR donor is NOT safe: its ClinVar is missing
+       germline records (F5 Leiden) and GRCh37 uses an incompatible
+       CLINVAR_CLNSIG encoding (CUI:significance:count)."
 fi
 
 if [ "${SKIP_DONOR_CLINVAR:-0}" != "1" ]; then

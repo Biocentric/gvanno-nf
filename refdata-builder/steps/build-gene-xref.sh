@@ -27,19 +27,33 @@ OUT=/mnt/big/gvanno-build/bundle
 BUILD=/mnt/big/gvanno-build
 CONTAINER=sigven/gvanno:1.7.0
 
-while getopts ":a:o:h" opt; do
+STEPOUT=
+while getopts ":a:o:s:h" opt; do
     case $opt in
         a) ASM=$OPTARG ;;  o) OUT=$OPTARG ;;
+        s) STEPOUT=$OPTARG ;;   # dir holding cgc.tsv / mim_phenotype.tsv
         h) sed -n '2,22p' "$0"; exit 0 ;;
         *) echo "unknown option -$OPTARG" >&2; exit 2 ;;
     esac
 done
 
+# Per-assembly step outputs, same convention as assemble-bundle.sh. Previously
+# hardcoded to $BUILD/out, which only worked for GRCh37 because a symlink was
+# swapped in around the call -- fragile, and it is how GRCh37 ended up with the
+# wrong ClinVar.
+if [ -z "$STEPOUT" ]; then
+    case $ASM in
+        grch38) STEPOUT=$BUILD/out ;;
+        grch37) STEPOUT=$BUILD/out37 ;;
+        *)      STEPOUT=$BUILD/out-$ASM ;;
+    esac
+fi
+
 PCGR=$BUILD/pcgr-20260620/data/$ASM
 OLD=$BUILD/ref-20231224/data/$ASM
 D=$OUT/data/$ASM/gene
-CGC=$BUILD/out/cgc.tsv
-MIM=$BUILD/out/mim_phenotype.tsv
+CGC=$STEPOUT/cgc.tsv
+MIM=$STEPOUT/mim_phenotype.tsv
 
 log() { printf '[xref] %s\n' "$*"; }
 die() { printf '[xref] ERROR: %s\n' "$*" >&2; exit 1; }
