@@ -36,8 +36,12 @@ process BUNDLE_VERIFY {
     fi
     echo "[verify] version ok" | tee -a verify.log
 
-    # Strip comments and blanks; only run sha256 check if there's at least one entry
-    grep -vE '^\\s*(#|\$)' manifest_in.tsv > manifest.clean.tsv || true
+    # Strip comments and blanks, then keep only entries for the assembly we are
+    # actually verifying. One manifest covers every assembly of a bundle
+    # version, but a user typically stages just one — without this filter,
+    # sha256sum -c would fail on the other assembly's absent files.
+    grep -vE '^\\s*(#|\$)' manifest_in.tsv \\
+      | grep " data/${assembly}/" > manifest.clean.tsv || true
     if [ -s manifest.clean.tsv ]; then
         echo "[verify] checking sha256 against \$(wc -l < manifest.clean.tsv) entries" | tee -a verify.log
         ( cd ${refdata_dir} && sha256sum -c "\$OLDPWD/manifest.clean.tsv" ) | tee -a verify.log
