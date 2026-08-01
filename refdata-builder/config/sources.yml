@@ -1,0 +1,81 @@
+# Source manifest for the gvanno-nf reference bundle builder.
+#
+# Every source here is fetchable WITHOUT an account. That is a hard design
+# constraint: the builder must be runnable unattended (CI, cron) with no stored
+# credentials. Where the obvious upstream requires registration (COSMIC for the
+# Cancer Gene Census, OMIM for phenotype MIM numbers) an equivalent open route
+# is used instead — see `notes` on each entry.
+#
+# Consumed by steps/fetch-sources.sh.
+
+target_bundle: "20260801"
+assemblies: [grch38, grch37]
+
+sources:
+
+  # ---------------------------------------------------------------------
+  # Donor bundles
+  # ---------------------------------------------------------------------
+  gvanno_current:
+    description: "The bundle being replaced. Source of the format spec and of ncER, which is carried forward verbatim."
+    url: "https://insilico.hpc.uio.no/pcgr/gvanno/gvanno.databundle.{assembly}.20231224.tgz"
+    size_gb: 3.5
+    sha256:
+      grch38: 35665b6ee6120647d0fd6e45258a90e4a5ecc019df03a08992c7ce8a698e6eea
+      grch37: fcca0ebfdd2c2629bbb721fe09c169b7471343a7392382bc37a2f63bec423034
+    provides: [ncer, spec, cgc_fallback, mim_fallback]
+
+  pcgr_2026:
+    description: "Primary donor. PCGR 2.3 reference bundle — ClinVar 2026-06, dbNSFP v5.3, Cancer Hotspots v3, GENCODE v49."
+    url: "https://insilico.hpc.uio.no/pcgr/pcgr_ref_data.20260620.{assembly}.tgz"
+    size_gb: 7.1
+    sha256:
+      grch38: f9b8149e37c7e63bd7d877713cdb11a1a609c492b3f1a055fb7e90cd80273e54
+      grch37: 03f872138dfb3e533d56f16fc7587b8543a3dfd605b39c7b9d4a7f9a4768fa5c
+    provides: [clinvar_vcf, clinvar_tsv, dbnsfp, gwas, hotspot, protein_domain, gene_xref_base]
+
+  pcgr_2025:
+    description: >
+      CGC donor. PCGR 2.3 DROPPED cgc_tier/cgc_somatic/cgc_germline from the gene
+      xref; the 2.2-era bundle still carries them (Cancer Gene Census v101, 2025).
+      Verified present at TSV columns 39-41 and in the xref tag.
+    url: "https://insilico.hpc.uio.no/pcgr/pcgr_ref_data.20250314.{assembly}.tgz"
+    size_gb: 4.8
+    provides: [cgc]
+    notes: "Avoids needing a COSMIC account. Only the gene/ subtree is extracted."
+
+  # ---------------------------------------------------------------------
+  # Open primary sources
+  # ---------------------------------------------------------------------
+  ncbi_mim2gene:
+    description: "MIM phenotype <-> gene mapping, for the xref's mim_phenotype_id field."
+    url: "https://ftp.ncbi.nlm.nih.gov/gene/DATA/mim2gene_medgen"
+    size_gb: 0.01
+    provides: [mim_phenotype_id]
+    notes: >
+      Replaces OMIM genemap2.txt, which needs registration. Arguably the better
+      source here anyway: the xref already stores UMLS CUIs and ClinVar speaks
+      MedGen, so staying inside the NCBI/MedGen namespace avoids a join.
+
+  hgnc:
+    description: "HGNC complete gene set — authoritative symbols, Entrez/Ensembl/UniProt xrefs, and omim_id."
+    url: "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
+    size_gb: 0.02
+    provides: [symbol_authority, omim_id_crosscheck]
+    notes: >
+      Use the Google mirror. The historical EBI path
+      ftp.ebi.ac.uk/pub/databases/genenames/hgnc/tsv/hgnc_complete_set.txt
+      now returns 404.
+
+# -------------------------------------------------------------------------
+# Registration-gated sources deliberately NOT used, and what replaces them
+# -------------------------------------------------------------------------
+avoided:
+  cosmic_cgc:
+    would_provide: [cgc_tier, cgc_somatic, cgc_germline]
+    replaced_by: pcgr_2025
+    tradeoff: "CGC v101 (2025) instead of the current release. Accepted."
+  omim_genemap2:
+    would_provide: [mim_phenotype_id]
+    replaced_by: ncbi_mim2gene
+    tradeoff: "None material — same MIM numbers, via NCBI's mirror of the gene/phenotype relationships."
