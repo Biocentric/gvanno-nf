@@ -1,100 +1,115 @@
-# Smoke test results & remaining unverified items
+# Verification state
 
-## Phase 1 smoke test — PASSED 2026-05-01
+Kept honest and current. If something here is stale, that is a bug.
 
-End-to-end run on the upstream gvanno example VCF (8871 variants, GRCh37):
+Last updated: **2026-08-01**, bundle `20260801`, container `sigven/gvanno:1.7.0`.
 
-```
-Duration    : 1m 18s on Ubuntu 24.04 / Docker 29.4 / Nextflow 26.04
-Succeeded   : 8 / 8 processes
-Output VCF  : 8871 records, BGZF-compressed, full annotation INFO tags
-Output TSV  : 221 columns × 8872 rows (CHROM, POS, ID, REF, ALT, QUAL, FILTER, AC, ...)
-```
+---
 
-All gvanno helpers (`gvanno_validate_input.py`, `gvanno_vep.py`, `gvanno_vcfanno.py`, `gvanno_summarise.py`, `gvanno_finalize.py`) live on `$PATH` inside `sigven/gvanno:1.7.0` at `/gvanno/`. VEP at `/opt/vep/src/ensembl-vep/vep`. vcf2tsvpy/bcftools at `/conda/bin/`. bgzip/tabix at `/usr/local/bin/`.
+## Verified
 
-## Things confirmed during the smoke test
+### Pipeline gates — both assemblies pass
 
-- **Bundle layout.** `gvanno.databundle.<assembly>.<version>.tgz` extracts directly to `data/<assembly>/...` (no leading directory). VEP cache extracts to `homo_sapiens/<ens>_<asm>/...`. `RELEASE_NOTES` contains `GVANNO_DB_VERSION = 20231224` exactly.
-- **Helper output naming.**
-  - `gvanno_validate_input.py` writes `<output>.vcf.gz` + `.tbi` directly when given an output ending in `.vcf` (it adds `.gz` itself and indexes).
-  - `gvanno_vep.py` writes `<output>.vcf.gz` + `.tbi` directly.
-  - `gvanno_vcfanno.py` writes uncompressed VCF (we bgzip + tabix).
-  - `gvanno_summarise.py` with `--compress_output_vcf` writes `<output>.vcf.gz` + `.tbi`.
-  - `gvanno_finalize.py` writes **gzipped** content into the path given even though the path doesn't end in `.gz` — detect the gzip magic bytes and rename rather than re-compress.
-  - `vcf2tsvpy --compress` appends `.gz` to the path given (so `--out_tsv X.tsv` produces `X.tsv.gz`).
-- **FASTA prep.** Ensembl ships the primary assembly as plain gzip; VEP needs it bgzipped + faidx'd. The current `BUNDLE_FETCH` does **not** convert — manual prep was needed for this smoke test.
+Run on hephaestus (Nextflow 26.04.3 / Docker), comparing bundle `20260801`
+against `20231224` on identical input with the same VEP 110 cache. Rows joined
+on `(CHROM, POS, REF, ALT, Feature)` by
+[`refdata-builder/verify/compare_runs.sh`](../refdata-builder/verify/compare_runs.sh).
 
-## Modules.config selectors that don't yet match anything
+| | GRCh38 | GRCh37 |
+|---|---|---|
+| input | 11-variant fixture | upstream example VCF, 8871 variants |
+| shape | 189 cols × 11 rows | 221 cols × 8871 rows |
+| rows lost / gained | 0 / 0 | 1 / 0 (explained below) |
+| drift in VEP-derived + `NCER_PERCENTILE` | **zero** | **zero** |
+| `EFFECT_PREDICTIONS` canary | populated | populated |
+| `CLINVAR_CLNSIG` grammar | plain | plain |
+| verdict | **PASSED** | **PASSED** |
 
-`BCFTOOLS_CONCAT` and `MULTIQC` are present as placeholders for v0.2 / Phase 2. Nextflow logs a benign `WARN: There's no process matching config selector` for each. Safe to ignore until those processes land.
+The one GRCh37 row difference is `21:16031396 T>C / ENST00000400562`. The
+baseline emitted **two** rows there, identical except that one carried
+`GENENAME` and the other did not — a duplicate gene-xref entry in the
+`20231224` bundle. Emitting one row is the correct behaviour.
 
-## Remaining unverified
+### 1,250-variant validation panel
 
-### Bit-identical output gate
-This smoke test confirms the pipeline runs and produces well-formed output. It does **not** yet confirm the per-row content matches upstream gvanno on the same input. Phase 1 acceptance gate (`zdiff` of the `.pass.tsv.gz` against an upstream gvanno run on the example VCF) still pending.
+250 variants in each ClinVar tier, one per gene, all 24 chromosomes, sampled
+from the prior bundle so every one is known to have been annotatable before.
+**Zero received the wrong ClinVar ID.** 1245/1250 matched; the five misses were
+each traced to ClinVar having retired the record upstream — absent from the
+NCBI `20260728` source by ID *and* by locus. Full result in
+[`refdata-builder/spec/PANEL-RESULTS.md`](../refdata-builder/spec/PANEL-RESULTS.md).
 
-### BUNDLE_FETCH FASTA prep — IMPLEMENTED, not yet integration-tested
-Implemented as `modules/local/refdata/bundle_prepare.nf` (`BUNDLE_PREPARE`), wired into `PREPARE_REFERENCES` after `BUNDLE_FETCH`. Runs inside the gvanno container; does `gunzip` → `bgzip` → `samtools faidx` on the Ensembl FASTA and places it at `data/<assembly>/.vep/homo_sapiens/<ens>_<asm>/Homo_sapiens.<asm>.dna.primary_assembly.fa.gz`. Idempotent.
+### Bundle contracts
 
-Not yet exercised end-to-end on a fresh `--refdata_mode download` run — the smoke test used a pre-staged bundle. Needs an integration run before v0.1.0.
+`check_bundle.py`: **18 checks, 0 failed** on both assemblies. Manifests
+(26 entries each) self-check with `sha256sum -c`. Both tarballs checksummed.
 
-### GitHub Releases mirror — IMPLEMENTED, not yet populated
-`BUNDLE_FETCH` now supports both direct URLs and a chunked-manifest fallback (`<file>.parts.txt`) for any mirror in `params.refdata_url_base`. The chunking strategy targets GitHub's 2 GB per-asset cap.
+### Mirror
 
-To populate the mirror, a repo maintainer runs `scripts/publish-refdata-mirror.sh` once per refdata version. The script downloads the bundle from upstream, splits it into 1.9 GB chunks, writes a `.parts.txt` manifest, and uploads everything to the `refdata-<version>` GitHub Release via `gh`. Idempotent.
+<https://github.com/Biocentric/gvanno-nf/releases/tag/refdata-20260801> — 10
+assets. Verified the way `BUNDLE_FETCH` consumes it: `parts.txt` manifests
+fetch and list three chunks each, all six chunk URLs return 200, and the direct
+unchunked URL returns 404 so the fallback path is actually reached.
 
-Until the script runs, the GH mirror URLs in `params.refdata_url_base` return 404 and the pipeline transparently falls back to the upstream Oslo mirror — same behaviour as before.
+---
 
-## GRCh38 — VERIFIED END-TO-END 2026-07-31
+## Not verified
 
-Run on hephaestus (Nextflow 26.04.3 / Docker), GRCh38 bundle downloaded fresh from the Oslo mirror:
+### `--refdata_mode download` against the new mirror ⚠️ most important gap
 
-```
---step prepare_references --refdata_mode download   : 3/3 processes ✔ (29m 50s, 25 GB)
---input <11-variant fixture> --refdata_mode prestaged: 8/8 processes ✔
-```
+The mirror's URLs resolve and the chunk layout is correct, but **no end-to-end
+`download` run has been done against it**. That is the path a new user takes,
+and it exercises code that has never run in anger: chunk reassembly in
+`BUNDLE_FETCH`, `BUNDLE_PREPARE`'s FASTA re-encoding, and `BUNDLE_VERIFY`
+against a *populated* manifest — which has never happened before, because the
+`20231224` manifest shipped empty and the checksum step silently skipped.
 
-Every fixture variant annotated to the expected gene and protein change, which confirms the GRCh38 coordinates and reference alleles are correct end-to-end:
+Everything so far has used pre-staged bundles. Run this before trusting the
+documented quick-start.
 
-| Variant | Result | | Variant | Result |
-|---|---|---|---|---|
-| 1:11796321 G>A | MTHFR p.A222V | | 7:55191822 T>G | EGFR p.L858R |
-| 1:114713909 G>T | NRAS p.Q61K | | 7:140753336 A>T | BRAF p.V600E |
-| 1:169549811 C>T | F5 p.R534Q | | 9:5073770 G>T | JAK2 p.V617F |
-| 2:208248388 C>T | IDH1 p.R132H | | 12:25245350 C>T | KRAS p.G12D |
-| 3:179218303 G>A | PIK3CA p.E545K | | 17:7675088 C>T | TP53 p.R175H |
-| 6:26092913 G>A | HFE p.C282Y | | | |
+### `check_bundle.py` validates structure, not value grammar
 
-(F5 reports `p.R534Q`; the familiar "R506Q" is the same variant numbered on the mature protein rather than the HGVS precursor.)
+It checks paths, tag names, field counts and indexes. It does **not** check
+that values look right. This is not theoretical: the first GRCh37 package
+silently shipped PCGR's ClinVar, whose `CLINVAR_CLNSIG` uses a
+`CUI:significance:count` encoding gvanno cannot parse, and `check_bundle.py`
+passed it 18/18. The gate now has a grammar canary, but the *build-time* check
+still doesn't. Sampling records per tag and asserting shape would close it.
 
-Output TSV column count varies with the input VCF's own INFO tags (vcf2tsvpy passes them through): 221 columns for the GRCh37 example VCF, 189 for this fixture whose INFO is empty. Not assembly-dependent.
+### `--scatter_by chromosome`
 
-### Original GRCh38 wiring notes
-GRCh38 is fully wired and is the pipeline default (`params.genome = 'GRCh38'`). The code is entirely parameterised by `params.genomes[params.genome]` — no module hardcodes an assembly — so GRCh38 traverses exactly the same paths GRCh37 did in the smoke test.
+Still never exercised end-to-end, on either assembly. It was rewritten in
+v0.1.0dev to enumerate contigs from the VCF's own tabix index and has not been
+run since.
 
-Verified for GRCh38 (2026-05-01):
-- **Ensembl VEP cache** `homo_sapiens_vep_110_GRCh38.tar.gz` (20 GB) present at `ftp.ensembl.org/pub/release-110/variation/indexed_vep_cache/`.
-- **Ensembl FASTA** `Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz` (841 MB) present (note: GRCh38 uses the main FASTA path, not the `grch37/` subpath — reflected in `conf/genomes.config`).
-- **LOFTEE GRCh38 ancestor** `human_ancestor.fa.gz{,.fai,.gzi}` present at the Broad mirror.
-- **gvanno GRCh38 bundle** — upstream `download_gvanno_refdata.py` builds `gvanno.databundle.grch38.20231224.tgz` from the same base as grch37, and gvanno's README uses `--genome_assembly grch38` as its *primary* example, so grch38 is upstream's default bundle. (The Oslo directory index is 403-forbidden, so this is confirmed by upstream's URL construction rather than a directory listing.)
-- **Test fixture** `assets/example.grch38.vcf` — 11 canonical variants (BRAF V600E, JAK2 V617F, KRAS G12D, EGFR L858R, TP53 R175H, IDH1 R132H, PIK3CA E545K, NRAS Q61K, HFE C282Y, F5 Leiden, MTHFR C677T) across 9 chromosomes. Every chrom/pos/REF/ALT was verified against the Ensembl GRCh38 REST API (`rest.ensembl.org/variation/human/<rsid>`); the REF allele matches the GRCh38 reference base in each case, which is the property VEP enforces.
+### GRCh37 gene xref — structurally verified only
 
-All of the above is now confirmed by the live run recorded at the top of this file.
+34 fields, CGC and MIM injected, 196,483 BED records matching the prior bundle
+exactly (GRCh37 is frozen at GENCODE 19). But the GRCh37 gate input is the
+upstream example VCF, which is not chosen to exercise cancer-gene columns —
+`CGC_TIER`, `TSG`, `ONCOGENE` and `MIM_PHENOTYPE_ID` coverage on GRCh37 has not
+been checked against a panel the way GRCh38's ClinVar was.
 
-### `--scatter_by chromosome` — reworked, not yet exercised
-Rewritten to enumerate contigs from the validated VCF's own tabix index (`tabix -l`) instead of a reference `.fai`. The previous implementation pointed at `ref.fa.fai`, a path that never exists after `BUNDLE_PREPARE` (which stores the FASTA + `.fai` under `.vep/homo_sapiens/<ens>_<asm>/`), so scatter would have failed on **both** assemblies. The new approach needs no reference index and is assembly-agnostic. The `groupTuple` → `bcftools concat -a | bcftools sort` gather path still needs a real end-to-end test.
+### Bit-identical comparison against upstream `gvanno.py`
 
-### Optional input index
-`INPUT_CHECK` no longer requires (or carries) a `.tbi` for input VCFs — `VALIDATE_VCF` re-normalises and re-indexes everything, so a pre-existing index was never used. This lets the pipeline accept plain uncompressed `.vcf` inputs (as the GRCh38 fixture is). The `vcf_index` samplesheet column is still accepted but ignored.
+Permanently retired. There is no upstream to be identical to — gvanno froze at
+v1.7.0 (2023-12-29) and publishes no bundle newer than `20231224`. The
+structural gates above replace it. `--refdata_version 20231224` still selects
+the old bundle if you need to reproduce a historical run.
 
-### `BUNDLE_FETCH` download mode — VERIFIED
-Exercised end-to-end for GRCh38 (see top of file). Two bugs were found and fixed in the process:
+### Track B — VEP 115
 
-1. **Container entrypoint.** `curlimages/curl` declares `ENTRYPOINT ["curl"]`, so Nextflow's `bash .command.run` was passed to curl as arguments; curl reported `URL rejected: No host part in the URL` and exited 3 before running a single script line. All refdata steps now use the gvanno container (`ENTRYPOINT=null`, ships bash/curl/wget/tar/gzip) — so the whole pipeline needs exactly **one** image. This also closes the old "container choices for refdata steps" item.
-2. **Where the data lands.** `BUNDLE_FETCH` now declares `storeDir params.refdata_dir`, so the bundle is written to `<refdata_dir>/data` instead of being stranded in the Nextflow work dir where `nextflow clean` would delete it.
+Not started. VEP stays at 110, so GENCODE (v44/v19), gnomAD (r2.1) and dbSNP
+(b154) are unchanged in this release. See the plan in
+`X:\claude\nf-gvanno-refdata-2026\`.
 
-Re-running `--step prepare_references --refdata_mode download` is now cheap: `PREPARE_REFERENCES` checks `RELEASE_NOTES` up front and skips fetch+prepare when the bundle is already staged at the requested version (verified: only `BUNDLE_VERIFY` runs, seconds instead of 25 GB). Note this idempotency check is done in Groovy — the process-level `storeDir` skip does **not** fire reliably for a directory output, so it is not relied upon.
+### Housekeeping
 
-### Nextflow 26.x compatibility
-`-entry` is rejected outright by the 26.x strict parser. The pipeline uses a `--step` param instead (`annotate` | `prepare_references`), which works on every version. The strict parser also rejects `switch` in a workflow body — the dispatch uses if/else.
+- `nf-test` coverage: none.
+- CI: none.
+- `MULTIQC` and `BCFTOOLS_CONCAT` config selectors still match no process —
+  Nextflow logs a benign `WARN` for each.
+- Literal `<NA>` strings appear in `ENTREZGENE` (118 rows of 8871 on GRCh37).
+  A pandas artefact from the container's own summarise/finalize, present in
+  the `20231224` output too (122 rows) and slightly reduced. Container-side,
+  not fixable from the bundle.

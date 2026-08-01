@@ -17,9 +17,14 @@ A Nextflow (DSL2, nf-core style) pipeline for **functional and clinical annotati
 
 ## Status
 
-**v0.2.0dev** *(this branch)* — reference data modernisation, Phase 0 complete.
-The pipeline is unchanged and working; the reference bundle has not been
-rebuilt yet. See [Annotation resources](#annotation-resources).
+**v0.2.0** — 2026 annotation databases. `--refdata_version` now defaults to
+`20260801`; pass `20231224` to reproduce a historical run. Both assemblies pass
+their gates with zero drift in every VEP-derived column, and a 1,250-variant
+panel produced zero wrong ClinVar IDs. Bundles are mirrored on
+[the `refdata-20260801` release](https://github.com/Biocentric/gvanno-nf/releases/tag/refdata-20260801).
+
+Not yet exercised: `--refdata_mode download` against that mirror. See
+[`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md).
 
 **v0.1.0dev** — both assemblies verified end to end.
 

@@ -1,5 +1,118 @@
 # Changelog
 
+## v0.2.0 — 2026 annotation databases (2026-08-01)
+
+**`params.refdata_version` now defaults to `20260801`.** Pass
+`--refdata_version 20231224` to reproduce a historical run; that bundle and its
+mirror remain available.
+
+The pipeline code is materially unchanged — this release is the reference data.
+VEP stays at 110, so GENCODE, gnomAD and dbSNP are untouched; those ride on the
+container and move in Track B.
+
+### What changed
+
+| Resource | `20231224` | `20260801` | Source |
+|---|---|---|---|
+| ClinVar | 2023-12 | **2026-07-28** | NCBI, direct |
+| dbNSFP | v4.5 | **v5.3** | PCGR 2.3 donor |
+| Cancer Hotspots | v2 (2017) | **v3 (2026)** | PCGR 2.3 donor |
+| GWAS Catalog | 2023-11 | **2026** | PCGR 2.3 donor |
+| Pfam | v36.0 | **2026** | PCGR 2.3 donor |
+| Cancer Gene Census | v97-era | **v101 (2025)** | PCGR 2.2 bundle |
+| MIM phenotypes | 3,853 genes | **5,271 genes** | NCBI `mim2gene_medgen` ∪ prior |
+| Gene/transcript xref | Ensembl 110 | **GENCODE 49** | PCGR 2.3, remapped |
+| ncER | v1.0 (2019) | v1.0, carried forward | no newer release exists |
+| VEP · GENCODE · gnomAD · dbSNP | 110 · v44/v19 · r2.1 · b154 | *unchanged* | Track B |
+
+Upstream gvanno froze at v1.7.0 (2023-12-29) and will publish no bundle newer
+than `20231224`, so this project now builds its own. `refdata-builder/` holds
+the whole chain; `make bundle` runs it for one assembly.
+
+**Every source is account-free.** COSMIC and OMIM both gate downloads behind
+registration. Cancer Gene Census is lifted from the PCGR 2.2-era bundle (2.3
+dropped those fields) and MIM phenotypes come from NCBI, which needs no account
+and covers 5,271 genes against the prior 3,853. The builder runs unattended.
+
+### Why it matters
+
+On a 1,250-variant panel, **68 of 500 pathogenic-tier calls (13.6%) differ**
+between the two bundles, and 77 of 96 total reclassifications fall in the
+pathogenic tiers. That is the measured cost of running 2023 ClinVar in a
+germline clinical annotator.
+
+### Validation
+
+Both assemblies pass their gates with **zero drift** in every VEP-derived
+column and `NCER_PERCENTILE`. The 1,250-variant panel produced **zero wrong
+ClinVar IDs**. Both bundles pass `check_bundle.py` 18/18. See
+[`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) — the gap that matters
+most is that `--refdata_mode download` has not been run against the new mirror.
+
+### Fixed
+
+- **`BUNDLE_VERIFY` was a no-op.** `refdata_manifest.20231224.tsv` shipped
+  empty, so the checksum step silently skipped on every run since the project
+  started. `refdata_manifest.20260801.tsv` carries all 52 entries (26 per
+  assembly) and `package-bundle.sh` refuses to build a tarball if the manifest
+  comes out empty. `BUNDLE_VERIFY` also now filters the manifest to the
+  assembly in use, since one manifest covers both but users stage one.
+- **The mirror URL hardcoded a release tag.** Overriding `--refdata_version`
+  would have silently fetched the wrong bundle. `refdata_url_base` now carries
+  a `{version}` placeholder that `BUNDLE_FETCH` substitutes at runtime.
+
+### Three findings that cost a build cycle each
+
+- **The `DBNSFP` tag is only half self-describing.** `dbnsfp.py` reads the
+  predictor *list* from the tag's own `Format:` string at runtime, but maps
+  each to an output tag through a hardcoded 17-entry dict (`gerp_rs` →
+  `DBNSFP_GERP`, not `DBNSFP_GERP_RS`). Derived names miss and cyvcf2 raises.
+  The emittable tag set is fixed by the container, so v5.3's new predictors
+  (AlphaMissense, REVEL, CADD, ESM1b, …) reach the combined
+  `EFFECT_PREDICTIONS` string but get no column until Track B.
+- **PCGR's ClinVar is not safe for a germline pipeline.** F5 p.R534Q — Factor V
+  Leiden, expert-panel Pathogenic — is missing from it. ClinVar is built from
+  NCBI directly instead. A later GRCh37 build silently shipped PCGR's copy
+  anyway, whose `CLINVAR_CLNSIG` uses a `CUI:significance:count` encoding
+  gvanno cannot parse; `check_bundle.py` passed it 18/18 because it validates
+  tag names, not value grammar. Both scripts now take an explicit per-assembly
+  `-s` output directory instead of swapping a symlink, and a missing NCBI
+  ClinVar is a hard error rather than a warning-and-fallback.
+- **Comparing runs by column hash is wrong.** One extra row shifts everything
+  below it, which reported all seven invariant columns as drifting when zero
+  rows actually differed. `compare_runs.sh` joins on
+  `(CHROM,POS,REF,ALT,Feature)`.
+
+Both known failure modes are silent — a dbNSFP field-count mismatch empties
+every prediction while the run still succeeds. `check_bundle.py` asserts them
+at build time; the gate carries canaries for both.
+
+### Added
+
+- `refdata-builder/` — `Makefile` driver, `config/sources.yml`, the step
+  scripts, and `spec/` holding the extracted format contract, donor
+  assessment, baseline and panel results.
+- `refdata-builder/verify/` — `check_bundle.py`, `compare_runs.sh`,
+  `make_check_panel.py`.
+- `scripts/publish-refdata-mirror.sh` gains `SOURCE_DIR` for locally built
+  bundles, verifies against the recorded `.sha256` before publishing, and uses
+  provenance-aware release notes — a bundle this project assembled must not be
+  described as published by Sigve Nakken.
+
+### Mirror
+
+<https://github.com/Biocentric/gvanno-nf/releases/tag/refdata-20260801>
+
+```
+gvanno.databundle.grch38.20260801.tgz  4.7 GB
+  fcf1907c9645a9e09bcc02fde261a64d8276c00e2657f1b748f87e5bb6b07f1e
+gvanno.databundle.grch37.20260801.tgz  4.7 GB
+  1a4a99e4c373e2fd2a5a824978d88a2966f863ee34d386ce50dc450e8f5ef037
+```
+
+Each is split into ~1.9 GB chunks with a `.parts.txt` manifest and `.sha256`
+sidecar; `BUNDLE_FETCH` reassembles transparently.
+
 ## v0.2.0dev — reference data modernisation, Phase 0 (2026-08-01)
 
 Groundwork for bringing the annotation databases to 2026 versions. **No

@@ -34,28 +34,45 @@ Contact: `sigven AT ifi.uio.no`.
 
 ### Annotation databases
 
-- **dbNSFP** v4.5
+> Versions below are those in reference bundle `20260801`. The bundle is
+> assembled by this project (see `refdata-builder/`) because upstream gvanno
+> froze at v1.7.0; the databases themselves remain the work of their
+> respective groups and several are redistributed via the PCGR reference
+> bundles (Sigve Nakken, University of Oslo). **dbNSFP is CC BY-NC-ND —
+> academic and non-commercial use only.**
+
+- **dbNSFP** v5.3 (October 2025)
   Liu, X., Li, C., Mou, C., Dong, Y., & Tu, Y. (2020). *dbNSFP v4: a comprehensive database of transcript-specific functional predictions and annotations for human nonsynonymous and splice-site SNVs.* Genome Medicine, 12, 103.
 
-- **gnomAD** r2.1
+- **gnomAD** r2.1 (via the VEP 110 cache — unchanged in v0.2.0)
   Karczewski, K. J., Francioli, L. C., Tiao, G., et al. (2020). *The mutational constraint spectrum quantified from variation in 141,456 humans.* Nature, 581, 434–443.
 
-- **ClinVar** (December 2023)
+- **ClinVar** (2026-07-28, built from NCBI directly)
   Landrum, M. J., Lee, J. M., Benson, M., et al. (2018). *ClinVar: improving access to variant interpretations and supporting evidence.* Nucleic Acids Research, 46(D1), D1062–D1067.
 
-- **dbSNP** build 154
+- **dbSNP** build 154 (via the VEP 110 cache — unchanged in v0.2.0)
   Sherry, S. T., Ward, M. H., Kholodov, M., et al. (2001). *dbSNP: the NCBI database of genetic variation.* Nucleic Acids Research, 29(1), 308–311.
 
-- **GENCODE** v44 / v19
+- **GENCODE** v44 / v19 (VEP cache); the gene xref is built on GENCODE v49
   Frankish, A., Diekhans, M., Jungreis, I., et al. (2021). *GENCODE 2021.* Nucleic Acids Research, 49(D1), D916–D923.
 
-- **NHGRI-EBI GWAS Catalog** (November 2023)
+- **NHGRI-EBI GWAS Catalog** (2026)
   Sollis, E., Mosaku, A., Abid, A., et al. (2023). *The NHGRI-EBI GWAS Catalog: knowledgebase and deposition resource.* Nucleic Acids Research, 51(D1), D977–D985.
 
-- **CancerMine** v50
+- **CancerMine** v51 (August 2025, final release)
   Lever, J., Zhao, E. Y., Grewal, J., Jones, M. R., & Jones, S. J. M. (2019). *CancerMine: a literature-mined resource for drivers, oncogenes and tumor suppressors in cancer.* Nature Methods, 16, 505–507.
 
-- **Cancer Hotspots**
+- **Cancer Hotspots** v3 (2026)
+  Chang, M. T., et al. (2026). *Cancer type-specific variation in patterns of driver alterations across 50,000 tumors.* Cancer Cell. (MSK-IMPACT 50K)
+
+- **Cancer Gene Census** v101 (2025) — COSMIC
+  Sondka, Z., Dhir, N. B., Carvalho-Silva, D., et al. (2024). *COSMIC: a curated database of somatic variants and clinical data for cancer.* Nucleic Acids Research, 52(D1), D1210–D1217.
+
+- **OMIM / MedGen** — phenotype MIM numbers via NCBI `mim2gene_medgen`
+  Amberger, J. S., Bocchini, C. A., Scott, A. F., & Hamosh, A. (2019). *OMIM.org: leveraging knowledge across phenotype-gene relationships.* Nucleic Acids Research, 47(D1), D1038–D1043.
+
+- **Pfam** (protein domains, via InterPro)
+  Mistry, J., Chuguransky, S., Williams, L., et al. (2021). *Pfam: The protein families database in 2021.* Nucleic Acids Research, 49(D1), D412–D419.
   Chang, M. T., Asthana, S., Gao, S. P., et al. (2016). *Identifying recurrent mutations in cancer reveals widespread lineage diversity and mutational specificity.* Nature Biotechnology, 34, 155–163.
 
 - **ncER**

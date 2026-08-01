@@ -53,7 +53,11 @@ process BUNDLE_FETCH {
     def fasta_url = params.genomes[genome].fasta_url
     def cache_url = params.genomes[genome].vep_cache_url
     def anc_url   = params.genomes[genome].ancestor_url
-    def url_list  = (refdata_url_base instanceof List ? refdata_url_base : [ refdata_url_base ]).join(' ')
+    // Substitute {version} so a --refdata_version override retargets the mirror
+    // instead of silently fetching whatever tag was baked into the config.
+    def url_list  = (refdata_url_base instanceof List ? refdata_url_base : [ refdata_url_base ])
+                        .collect { it.toString().replace('{version}', refdata_version.toString()) }
+                        .join(' ')
     """
     set -euo pipefail
     mkdir -p data/${assembly}/.vep
