@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+#
+# Assemble a gvanno reference bundle from the donor bundles.
+#
+#   usage: assemble-bundle.sh [-a ASSEMBLY] [-v VERSION] [-o OUTDIR]
+#
+# Covers the resources that come from donors. The gene/transcript xref is built
+# separately (build-gene-xref.sh) because it needs the CGC and MIM maps merged
+# in; run this first, then that.
+#
+#   lift        hotspot, hotspot_long, gwas, dbnsfp   (layout-identical)
+#   transform   clinvar vcf (tag rename), clinvar tsv + protein_domain (project)
+#   carry       ncer  (PCGR dropped it; no newer release exists anyway)
+#   generate    RELEASE_NOTES, the DBNSFP_* block of vcf_infotags_gvanno.tsv
+#
+# Anything layout-sensitive is resolved by NAME, never by column position.
+#
+set -uo pipefail
+
+ASM=grch38
+VERSION=20260801
+OUT=/mnt/big/gvanno-build/bundle
+SRC=/mnt/big/gvanno-refdata
+BUILD=/mnt/big/gvanno-build
+CONTAINER=sigven/gvanno:1.7.0
+
+while getopts ":a:v:o:h" opt; do
+    case $opt in
+        a) ASM=$OPTARG ;;
+        v) VERSION=$OPTARG ;;
+        o) OUT=$OPTARG ;;
+        h) sed -n '2,18p' "$0"; exit 0 ;;
+        *) echo "unknown option -$OPTARG" >&2; exit 2 ;;
+    esac
+done
+
+PCGR=$BUILD/pcgr-20260620/data/$ASM
+OLD=$BUILD/ref-20231224/data/$ASM
+D=$OUT/data/$ASM
+
+log() { printf '[assemble] %s\n' "$*"; }
+die() { printf '[assemble] ERROR: %s\n' "$*" >&2; exit 1; }
+
+[ -d "$PCGR" ] || die "donor not extracted: $PCGR"
+[ -d "$OLD" ]  || die "prior bundle not extracted: $OLD"
+
+mkdir -p "$D"/{variant/vcf/{clinvar,dbnsfp,gwas},variant/tsv/clinvar} \
+         "$D"/{gene/bed/gene_transcript_xref,gene/tsv/gene_transcript_xref} \
+         "$D"/misc/{bed/ncer,tsv/hotspot,tsv/protein_domain} || die "mkdir failed"
+
+# --------------------------------------------------------------------------
+# 1. straight lifts — verified layout-identical in spec/DONOR-ASSESSMENT.md
+# --------------------------------------------------------------------------
+lift() {  # lift <relpath> [<relpath>...]
+    for r in "$@"; do
+        [ -f "$PCGR/$r" ] || { log "skip (absent in donor): $r"; continue; }
+        cp -f "$PCGR/$r" "$D/$r" && log "lift    $r ($(du -h "$D/$r" | cut -f1))"
+    done
+}
+lift misc/tsv/hotspot/hotspot.tsv.gz \
+     misc/tsv/hotspot/hotspot_long.tsv.gz \
+     variant/vcf/gwas/gwas.vcf.gz \
+     variant/vcf/gwas/gwas.vcf.gz.tbi \
+     variant/vcf/gwas/gwas.vcfanno.vcf_info_tags.txt \
+     variant/vcf/dbnsfp/dbnsfp.vcf.gz \
+     variant/vcf/dbnsfp/dbnsfp.vcf.gz.tbi \
+     variant/vcf/dbnsfp/dbnsfp.vcfanno.vcf_info_tags.txt
+
+# --------------------------------------------------------------------------
+# 2. ncER — carry forward verbatim (2.7 GB; hardlink when on one filesystem)
+# --------------------------------------------------------------------------
+for f in ncer.bed.gz ncer.bed.gz.tbi ncer.vcfanno.vcf_info_tags.txt; do
+    [ -f "$OLD/misc/bed/ncer/$f" ] || die "missing from prior bundle: $f"
+    ln -f "$OLD/misc/bed/ncer/$f" "$D/misc/bed/ncer/$f" 2>/dev/null \
+        || cp -f "$OLD/misc/bed/ncer/$f" "$D/misc/bed/ncer/$f"
+done
+log "carry   ncer ($(du -h "$D/misc/bed/ncer/ncer.bed.gz" | cut -f1), from 20231224)"
+
+# --------------------------------------------------------------------------
+# 3. ClinVar VCF — PCGR renamed REVIEW_STATUS_STARS to GOLD_STARS and added two
+#    tags gvanno does not declare. gvanno_finalize.py and the TSV column
+#    contract expect the old name, so rename back and drop the extras.
+# --------------------------------------------------------------------------
+log "transform clinvar vcf (CLINVAR_GOLD_STARS -> CLINVAR_REVIEW_STATUS_STARS)"
+DROP=CLINVAR_CONTRIB_CLNS_GERMLINE,CLINVAR_PHENOTYPE_STATUS
+# bcftools in sigven/gvanno:1.7.0 predates --rename-annots, so drop the extra
+# tags with -x (which it does support) and do the rename as a stream edit.
+# CLINVAR_GOLD_STARS is a distinctive token appearing only as the header ID and
+# the INFO key, so a global substitution is safe here.
+docker run --rm -v "$BUILD":/w -v "$PCGR":/donor:ro --entrypoint /bin/bash "$CONTAINER" -c "
+    set -euo pipefail
+    bcftools annotate -x INFO/$DROP -O v /donor/variant/vcf/clinvar/clinvar.vcf.gz \
+      | sed 's/CLINVAR_GOLD_STARS/CLINVAR_REVIEW_STATUS_STARS/g' \
+      | bgzip -c > /w/clinvar.tmp.vcf.gz
+    tabix -f -p vcf /w/clinvar.tmp.vcf.gz
+" || die "bcftools clinvar transform failed"
+mv -f "$BUILD/clinvar.tmp.vcf.gz"     "$D/variant/vcf/clinvar/clinvar.vcf.gz"
+mv -f "$BUILD/clinvar.tmp.vcf.gz.tbi" "$D/variant/vcf/clinvar/clinvar.vcf.gz.tbi"
+
+# tag sidecar: same rename, same drops
+grep -v -E "ID=($(echo "$DROP" | tr ',' '|'))," \
+    "$PCGR/variant/vcf/clinvar/clinvar.vcfanno.vcf_info_tags.txt" \
+  | sed 's/ID=CLINVAR_GOLD_STARS/ID=CLINVAR_REVIEW_STATUS_STARS/' \
+  > "$D/variant/vcf/clinvar/clinvar.vcfanno.vcf_info_tags.txt"
+log "        clinvar tags: $(grep -c '^##INFO' "$D/variant/vcf/clinvar/clinvar.vcfanno.vcf_info_tags.txt") (expect 16)"
+
+# --------------------------------------------------------------------------
+# 4. ClinVar TSV — project onto the columns gvanno_finalize.py reads.
+#    PCGR renamed num_submitters -> num_submissions and dropped
+#    nontruncating_variant; emit both under the names gvanno expects.
+# --------------------------------------------------------------------------
+log "transform clinvar tsv (column projection)"
+zcat "$OLD/variant/tsv/clinvar/clinvar.tsv.gz" | head -1 > "$BUILD/clinvar_cols.txt"
+zcat "$PCGR/variant/tsv/clinvar/clinvar.tsv.gz" \
+  | awk -F'\t' -v want="$(cat "$BUILD/clinvar_cols.txt")" '
+    BEGIN { n = split(want, w, "\t") }
+    NR == 1 {
+        for (i = 1; i <= NF; i++) c[$i] = i
+        c["num_submitters"]        = c["num_submitters"]        ? c["num_submitters"]        : c["num_submissions"]
+        c["nontruncating_variant"] = c["nontruncating_variant"] ? c["nontruncating_variant"] : 0
+        for (i = 1; i <= n; i++) if (!(w[i] in c)) miss = miss " " w[i]
+        if (miss != "") printf "  note: not in donor, emitted empty:%s\n", miss > "/dev/stderr"
+        print want; next
+    }
+    { s = ""
+      for (i = 1; i <= n; i++) { k = c[w[i]]; s = s (i > 1 ? "\t" : "") (k ? $k : "") }
+      print s }
+  ' 2>"$BUILD/clinvar_tsv.warn" | gzip -c > "$D/variant/tsv/clinvar/clinvar.tsv.gz"
+[ -s "$BUILD/clinvar_tsv.warn" ] && cat "$BUILD/clinvar_tsv.warn"
+log "        clinvar tsv rows: $(zcat "$D/variant/tsv/clinvar/clinvar.tsv.gz" | wc -l)"
+
+# --------------------------------------------------------------------------
+# 5. protein_domain — PCGR carries 5 columns, gvanno wants 3, deduped
+# --------------------------------------------------------------------------
+log "transform protein_domain (5 cols -> 3, deduped)"
+zcat "$PCGR/misc/tsv/protein_domain/protein_domain.tsv.gz" \
+  | awk -F'\t' 'NR==1{for(i=1;i<=NF;i++)c[$i]=i; print "pfam_id\tpfam_name\tpfam_link"; next}
+      { k=$c["pfam_id"]; if(k=="" || k in seen) next; seen[k]=1
+        print $c["pfam_id"]"\t"$c["pfam_name"]"\t"$c["pfam_link"] }' \
+  | gzip -c > "$D/misc/tsv/protein_domain/protein_domain.tsv.gz"
+log "        pfam entries: $(( $(zcat "$D/misc/tsv/protein_domain/protein_domain.tsv.gz" | wc -l) - 1 ))"
+
+# --------------------------------------------------------------------------
+# 6. vcf_infotags — regenerate the DBNSFP_* block from the donor's own header
+#    so the declared output tags can never drift from the predictor set.
+#    dbnsfp.py derives algorithm names by stripping _score/_pred and lowercasing;
+#    gvanno declares them as DBNSFP_<UPPER>, with non-alphanumerics as '_'.
+# --------------------------------------------------------------------------
+log "generate  vcf_infotags_gvanno.tsv (DBNSFP_* block from the donor header)"
+FMT=$(grep -o 'Format: [^"]*' "$D/variant/vcf/dbnsfp/dbnsfp.vcfanno.vcf_info_tags.txt" | sed 's/^Format: //')
+grep -v '^DBNSFP_' "$OLD/vcf_infotags_gvanno.tsv" > "$D/vcf_infotags_gvanno.tsv"
+echo "$FMT" | tr '|' '\n' | tail -n +7 | while read -r a; do
+    [ -z "$a" ] && continue
+    tag=$(echo "$a" | sed -E 's/(_score|_pred)$//' | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g')
+    printf 'DBNSFP_%s\t.\tString\t"Variant effect prediction from dbNSFP (%s)"\tgvanno\n' \
+           "$tag" "$(echo "$a" | sed -E 's/(_score|_pred)$//')"
+done >> "$D/vcf_infotags_gvanno.tsv"
+cp -f "$OLD/vcf_infotags_vep.tsv" "$D/vcf_infotags_vep.tsv"
+log "        DBNSFP_* tags declared: $(grep -c '^DBNSFP_' "$D/vcf_infotags_gvanno.tsv") (was $(grep -c '^DBNSFP_' "$OLD/vcf_infotags_gvanno.tsv"))"
+
+# --------------------------------------------------------------------------
+# 7. RELEASE_NOTES
+# --------------------------------------------------------------------------
+cat > "$D/RELEASE_NOTES" <<NOTES
+##GVANNO_SOFTWARE_VERSION = 1.7.0
+##GVANNO_DB_VERSION = $VERSION
+pfam = from PCGR 20260620
+ncER = v1.0 (March 2019)
+uniprot = from PCGR 20260620
+cancerhotspots = v3 (2026)
+dbsnp = build 154
+dbnsfp = v5.3 (October 2025)
+gnomad = r2.1 (October 2018)
+gwas = from PCGR 20260620
+clinvar = 2026-06
+gencode = 44/19
+cgc = v101 (2025, via PCGR 20250314)
+mim_phenotype = NCBI mim2gene_medgen unioned with 20231224
+NOTES
+log "generate  RELEASE_NOTES ($VERSION)"
+
+log "done. Next: build-gene-xref.sh, then verify/check_bundle.py"
+find "$D" -type f | sort | sed 's|^|  |'
