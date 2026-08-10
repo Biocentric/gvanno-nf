@@ -83,9 +83,27 @@ declared on both.
 
 ## Not verified
 
-### `--scatter_by chromosome`
+### ~~`--scatter_by chromosome`~~ — VERIFIED 2026-08-10, after fixing a serious bug
 
-Still never exercised end to end, on either assembly or either version.
+Now correct, but it was badly broken until tested. On a 1,250-variant panel
+across 24 contigs it produced **134 rows instead of 1,250** — exactly the chr1
+count — because only one shard was annotated and the other 23 were silently
+discarded, with exit 0 and a well-formed output file.
+
+`prepare_references.nf` emitted `refdata_dir` and `vep_cache` as queue channels
+holding one element (`.combine()` demotes a value channel). Nextflow zips
+process inputs positionally and stops at the shortest, so
+`VEP(<24 shards>, <1>, <1>)` ran exactly one task. Fixed with `.first()`.
+
+It could only fail when used — with `scatter_by=none` there is one shard, so
+the mismatch never bites — and it had never been used, having shipped from
+v0.1.0dev through v0.2.0 as a documented but unexercised feature.
+
+After the fix: 24 VEP / 24 VCFANNO / 24 SUMMARISE tasks, 1,250 rows, and output
+byte-identical to the unscattered run after sorting.
+
+Not yet run on GRCh37, though it shares every code path and the contig
+enumeration is assembly-agnostic (`tabix -l` on the validated VCF).
 
 ### The GHCR package is private
 

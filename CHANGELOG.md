@@ -83,6 +83,13 @@ Verified by execution.
 
 ### Fixed
 
+- **`--scatter_by chromosome` annotated only one shard.** It discarded ~89% of
+  variants and exited 0 — 134 rows instead of 1,250 on a 24-contig panel.
+  `prepare_references.nf` emitted `refdata_dir`/`vep_cache` as one-element
+  queue channels, and Nextflow zips process inputs positionally and stops at
+  the shortest, so `VEP(<24 shards>, <1>, <1>)` ran a single task. Fixed with
+  `.first()`. The feature had shipped since v0.1.0dev without ever being run;
+  it is invisible unless scatter is actually used.
 - **`BUNDLE_PREPARE` published the entire reference tree.** No `withName` rule,
   so it fell through to the catch-all `publishDir` and copied ~26 GB into
   `outdir`. `--refdata_mode download` silently cost double the disk.
