@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 python3-pip python3-dev \
         samtools bcftools \
         build-essential zlib1g-dev libbz2-dev liblzma-dev curl ca-certificates patch \
+        libcurl4-openssl-dev libssl-dev \
     && ln -sf /usr/bin/python3 /usr/local/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
@@ -44,7 +45,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # (PEP 668 landed in 23.04+). Add it back only if the base moves to 24.04.
 RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel \
     && pip3 install --no-cache-dir \
-        'pandas>=2.0,<3.0' 'numpy<2.3' scipy cython cyvcf2 vcf2tsvpy
+        'pandas>=2.0,<3.0' 'numpy<2.3' scipy cython cyvcf2
+
+# vcf2tsvpy is NOT on PyPI (404) — it is distributed via bioconda and GitHub,
+# which is why sigven's image has it at /conda/bin/vcf2tsvpy. It is MIT
+# licensed, so unlike the gvanno helpers there is no redistribution question.
+# Pinned to v0.6.1, the exact version in sigven/gvanno:1.7.0, so that any TSV
+# difference under Track B is attributable to VEP and not to the TSV writer.
+# (v0.6.2 exists; bump it as a separate, isolated change.)
+# Installed from the release tarball rather than git+https:// — the base image
+# has no git, and a tarball URL avoids adding it just for one dependency.
+ARG VCF2TSVPY_TAG=v0.6.1
+RUN pip3 install --no-cache-dir \
+        "https://github.com/sigven/vcf2tsvpy/archive/refs/tags/${VCF2TSVPY_TAG}.tar.gz"
 
 # ---------------------------------------------------------------------------
 # 2. vcfanno and vt — single static binary and a small source build.
@@ -54,10 +67,15 @@ RUN curl -fsSL -o /usr/local/bin/vcfanno \
       "https://github.com/brentp/vcfanno/releases/download/v${VCFANNO_VERSION}/vcfanno_linux64" \
     && chmod +x /usr/local/bin/vcfanno
 
-ARG VT_COMMIT=2187ff6347086e38f71a45c88faf768e9019be1f
-RUN curl -fsSL -o /tmp/vt.tgz "https://codeload.github.com/atks/vt/tar.gz/${VT_COMMIT}" \
-    && tar -xzf /tmp/vt.tgz -C /tmp && cd /tmp/vt-${VT_COMMIT} \
-    && make -j"$(nproc)" >/dev/null && cp vt /usr/local/bin/ \
+# vt 0.57721 — the tagged release, and what bioconda ships (sigven's image has
+# it at /conda/bin/vt). Its release tarball bundles the vendored libs
+# (lib/htslib et al), so it builds without git submodules.
+# gvanno_validate_input.py needs it for `vt decompose -s` on multi-allelic sites.
+ARG VT_TAG=0.57721
+RUN curl -fsSL -o /tmp/vt.tgz "https://codeload.github.com/atks/vt/tar.gz/${VT_TAG}" \
+    && tar -xzf /tmp/vt.tgz -C /tmp && cd "/tmp/vt-${VT_TAG}" \
+    && make -j"$(nproc)" \
+    && test -x vt && cp vt /usr/local/bin/ \
     && cd / && rm -rf /tmp/vt*
 
 # ---------------------------------------------------------------------------

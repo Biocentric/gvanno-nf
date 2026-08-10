@@ -84,6 +84,46 @@ Not stylistic. `lib/gvanno/variant.py:170-186` raises under pandas 3.0 —
 silent dtype coercion. Verified by execution, not inference. Fixing that
 properly is a separate change; do not combine a pandas major with a VEP major.
 
+## Build status — passing
+
+Built and verified on hephaestus, 2026-08-09:
+
+```
+vep 115.2 · python3 3.10.12 · pandas 2.3.3 · numpy 2.2.6
+samtools 1.13 · bcftools 1.13 · vcfanno 0.3.5 · vt 0.57721 · vcf2tsvpy 0.6.1
+VEP_VERSION 115   GENCODE {'grch38': 49, 'grch37': 19}
+all build-time assertions passed
+```
+
+**LOFTEE compiles against the VEP 115 Perl API.** This is the load-bearing
+result for Track B, and it is now empirical rather than inferred:
+
+```
+perl -c LoF.pm            -> COMPILES
+perl -c NearestExonJB.pm  -> COMPILES
+```
+
+The research argued LOFTEE would work because the plugin interface is
+byte-identical across 110–116. This confirms the actual vendored 2019 LOFTEE
+compiles against the actual 115 API inside the actual image. VEP's only
+complaint when invoked is the missing cache, which B2 stages.
+
+### Dependencies that are not obvious
+
+Learned the hard way, one build failure each:
+
+| Symptom | Cause |
+|---|---|
+| `no such option: --break-system-packages` | pip 22.0.2 on Ubuntu 22.04 predates the flag (pip 23.0.1), and PEP 668 marking only arrives in Ubuntu 23.04+ |
+| `vcf2tsvpy (from versions: none)` | It is **not on PyPI** — bioconda and GitHub only, which is why sigven's image has it at `/conda/bin/`. Installed from the release tarball; it is MIT, so no redistribution question. |
+| `Cannot find command 'git'` | The base image has no git; use a tarball URL, not `pip install git+https://` |
+| `vt` 404 | The tag is `0.57721`, not a commit SHA. Its release tarball *does* bundle the vendored libs, so it builds without submodules. |
+| `cannot find -lcurl` | The base has the curl *binary* but not `libcurl` headers; htslib also links `-lcrypto`. Needs `libcurl4-openssl-dev` + `libssl-dev`. |
+
+Do not suppress compiler output in the vt step. The first failure there
+reported only `Error 1` because of `>/dev/null 2>&1`, and finding the real
+cause meant rebuilding the cached layer as a probe image.
+
 ## Build
 
 ```bash
