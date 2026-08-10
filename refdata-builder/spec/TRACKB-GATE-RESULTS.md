@@ -90,11 +90,28 @@ rather than hiding them. 36 such on GRCh38, 29 on GRCh37.
 > see thousands of spurious line changes from this alone. It is cosmetic, but it
 > is not invisible.
 
-### The one GRCh37 Feature difference
+### The one GRCh37 Feature difference — explained, and it is an improvement
 
-1 row of 1246. Within the 1% tolerance and consistent with a `--pick_order`
-tie-break rather than a transcript-set change, but it has not been individually
-explained. Worth a look before v0.3.0 ships.
+`14:21161830 A>T`, ANG / RNASE4 locus.
+
+| | arm A (VEP 110) | arm B (VEP 115) |
+|---|---|---|
+| picked transcript | `ENST00000397990` | `ENST00000336811` |
+| `CANONICAL` | `.` | **YES** |
+| `PRINCIPAL_ISOFORM_FLAG` | `.` | **PRINCIPAL:1** |
+| GENCODE tags | `alternative_5_UTR&basic&…&read…` | `basic&appris_principal&CCDS` |
+| HGVSc | `c.107A>T` | `c.107A>T` |
+| **HGVSp** | **p.Gln36Leu** | **p.Gln36Leu** |
+
+The protein consequence is identical. VEP 115 picked the canonical,
+APPRIS-principal, CCDS transcript where 110 picked an alternative-5′UTR
+read-through. gvanno's `--pick_order` is
+`mane_select,mane_plus_clinical,canonical,appris,…`, and GRCh37 has no MANE to
+outrank `canonical`, so this is Ensembl's revised canonical-transcript
+designation propagating through — a strictly better pick with the same biology.
+
+Not a defect, and nothing to fix. Worth knowing that GRCh37 transcript picks
+can shift on the canonical criterion even with GENCODE frozen at 19.
 
 ## Reproducing
 
