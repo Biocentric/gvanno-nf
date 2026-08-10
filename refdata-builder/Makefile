@@ -74,7 +74,9 @@ clinvar: | $(OUTDIR)
 	@mv -f $(OUTDIR)/clinvar.bgz.vcf.gz.tbi $(OUTDIR)/clinvar.final.vcf.gz.tbi
 	@echo "built $(OUTDIR)/clinvar.final.vcf.gz — install with assemble-bundle.sh"
 
-CONTAINER ?= sigven/gvanno:1.7.0
+# Track B default. Using the VEP 110 image here silently runs the wrong VEP
+# against a 115 cache, which makes check_csq_tags report a meaningless diff.
+CONTAINER ?= ghcr.io/biocentric/gvanno-nf:2026.1
 
 ## assemble — lift/transform/carry every donor resource into a bundle tree
 assemble:
@@ -86,8 +88,15 @@ xref:
 
 ## verify — assert the container's contract BEFORE running the pipeline.
 ##          Both known failure modes are silent, so this is not optional.
+##          Two checks: structural (paths, tag names, field counts) and
+##          semantic (the declared VEP tags vs what VEP actually emits).
+##          The second exists because the first passed a bundle whose gnomAD
+##          tag set predated VEP 113's OTH -> REMAINING rename.
+VEPCACHE ?= $(BUILDDIR)/ref-trackb/data/$(ASSEMBLY)/.vep
+VEPASM   ?= $(if $(filter grch37,$(ASSEMBLY)),GRCh37,GRCh38)
 verify:
 	./verify/check_bundle.py $(BUNDLE) --assembly $(ASSEMBLY) --version $(VERSION)
+	@if [ -d "$(VEPCACHE)" ]; then 	    ./verify/check_csq_tags.sh $(CONTAINER) $(VEPCACHE) $(VEPASM) 	        $(BUNDLE)/data/$(ASSEMBLY)/vcf_infotags_vep.tsv; 	 else 	    echo "[verify] SKIPPED check_csq_tags — no VEP cache at $(VEPCACHE)"; 	    echo "[verify] stage it first; a bundle packaged without this check has"; 	    echo "[verify] never been compared against real VEP output."; 	    exit 1; 	 fi
 
 ## package — sha256 manifest + tarball + tarball checksum
 package: verify

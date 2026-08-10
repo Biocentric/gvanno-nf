@@ -50,6 +50,22 @@ docker run --rm -v "$CACHE":/cache:ro -v "$tmp":/t --entrypoint /bin/bash "$IMAG
 
 [ -s "$tmp/emitted.txt" ] || { echo "[csq] no CSQ header produced — VEP or cache problem" >&2; exit 1; }
 
+# Sanity-gate the VEP run itself. Pointing this at the wrong container (e.g. a
+# VEP 110 image against a 115 cache) yields a plausible-looking but WRONG field
+# list, and the resulting diff is noise that looks like a real finding. Assert
+# the run produced something we recognise before comparing anything.
+n_emit=$(grep -vc '^$' "$tmp/emitted.txt")
+missing=""
+for req in Consequence Feature SYMBOL Gene gnomADe_AF; do
+    grep -qx "$req" "$tmp/emitted.txt" || missing="$missing $req"
+done
+if [ "$n_emit" -lt 50 ] || [ -n "$missing" ]; then
+    echo "[csq] VEP produced an implausible CSQ list: $n_emit fields,${missing:- nothing} missing" >&2
+    echo "[csq] this usually means the container and the cache disagree on VEP version." >&2
+    echo "[csq] container=$IMAGE cache=$CACHE" >&2
+    exit 2
+fi
+
 # gvanno deliberately consumes only a subset of CSQ (annoutils.py filters by a
 # wanted-set), so "not declared" is usually intentional rather than a bug. This
 # allowlist records the intentional ones WITH their reason, so anything outside
@@ -87,6 +103,19 @@ echo "[csq] VEP emits $(wc -l < "$tmp/emit.txt") CSQ fields; spec declares $(wc 
 undeclared=$(comm -23 "$tmp/emit.txt" "$tmp/declared.txt" | comm -23 - "$tmp/ign.txt")
 # a declared gnomAD tag that VEP does not emit will always be empty
 ghost=$(grep -E '^gnomAD' "$tmp/declared.txt" | sort -u | comm -23 - "$tmp/emit.txt")
+
+# Ensembl carries NO gnomAD genome data for GRCh37 — only exomes — so every
+# gnomADg_* tag is legitimately empty there. The tag dictionary is shared
+# between assemblies, so this is expected rather than a defect. Report it, but
+# do not fail the build over it.
+if [ "$ASM" = GRCh37 ] && [ -n "$ghost" ]; then
+    expected_g=$(echo "$ghost" | grep -E '^gnomADg_' || true)
+    ghost=$(echo "$ghost" | grep -vE '^gnomADg_' || true)
+    if [ -n "$expected_g" ]; then
+        echo "[csq] note: $(echo "$expected_g" | grep -c .) gnomADg_* tags are empty on GRCh37 —"
+        echo "[csq]       Ensembl has no gnomAD genome data for this assembly. Expected."
+    fi
+fi
 
 rc=0
 if [ -n "$undeclared" ]; then

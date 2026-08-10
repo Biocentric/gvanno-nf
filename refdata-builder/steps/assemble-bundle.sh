@@ -204,9 +204,21 @@ log "        pfam entries: $(( $(zcat "$D/misc/tsv/protein_domain/protein_domain
 #    container. The four predictors v5.3 drops leave their tags declared but
 #    unpopulated, which is harmless.
 # --------------------------------------------------------------------------
-log "generate  vcf_infotags_gvanno.tsv (DBNSFP_* block carried over verbatim)"
-cp -f "$OLD/vcf_infotags_gvanno.tsv" "$D/vcf_infotags_gvanno.tsv"
-cp -f "$OLD/vcf_infotags_vep.tsv"    "$D/vcf_infotags_vep.tsv"
+# The tag dictionaries come from refdata-builder/spec/, which is the MAINTAINED
+# contract, not from $OLD (the prior bundle). Sourcing them from $OLD is how the
+# VEP 115 gnomAD fix got silently discarded: the corrected spec sat in the repo
+# while the assembler kept copying the 2023 file over it. check_csq_tags.sh
+# caught it, but the assembler should not have needed catching.
+SPECDIR=${SPECDIR:-$(cd "$(dirname "$0")/../spec" 2>/dev/null && pwd)}
+log "generate  vcf_infotags from spec: ${SPECDIR:-<unset>}"
+for f in vcf_infotags_gvanno.tsv vcf_infotags_vep.tsv; do
+    if [ -n "${SPECDIR:-}" ] && [ -f "$SPECDIR/$f" ]; then
+        cp -f "$SPECDIR/$f" "$D/$f"
+    else
+        die "no $f in SPECDIR ($SPECDIR) — refusing to fall back to the prior bundle,
+       which would silently ship a stale tag set"
+    fi
+done
 log "        DBNSFP_* tags declared: $(grep -c '^DBNSFP_' "$D/vcf_infotags_gvanno.tsv") (fixed by the container's algo_mapping)"
 
 # --------------------------------------------------------------------------
