@@ -58,12 +58,40 @@ printf '  variant x gene keys: shared=%s only-old=%s only-new=%s\n' \
 
 echo
 echo "STRICT — bundle-carried, position-keyed (must be identical):"
+# Compare NUMERICALLY where both sides parse as numbers. The container upgrade
+# moved Python 3.7/pandas 1.x -> 3.10/pandas 2.3, which changed float
+# repr: ncER 97.909 serialises as "97.90899999999999" under the old stack and
+# "97.909" under the new one. Identical values, different strings -- a string
+# compare reports that as data corruption, which is how this check first failed
+# against a byte-identical ncER file (same sha256 in both bundles).
 for c in CLINVAR_MSID CLINVAR_CLASSIFICATION NCER_PERCENTILE GWAS_HIT; do
     pull "$OLD" "$c" > "$tmp/a"; pull "$NEW" "$c" > "$tmp/b"
-    n=$(join -t$'\t' "$tmp/a" "$tmp/b" | awk -F'\t' '$2!=$3{d++}END{print d+0}')
-    t=$(join -t$'\t' "$tmp/a" "$tmp/b" | wc -l)
-    if [ "$n" -eq 0 ]; then printf '  PASS  %-24s 0/%s differ\n' "$c" "$t"
-    else printf '  FAIL  %-24s %s/%s differ — the VEP swap corrupted vcfanno input\n' "$c" "$n" "$t"; fail=1; fi
+    join -t$'\t' "$tmp/a" "$tmp/b" > "$tmp/j"
+    t=$(wc -l < "$tmp/j")
+    read -r n fmt <<EOF
+$(awk -F'\t' '
+    function isnum(x){ return (x ~ /^-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) }
+    {
+      if ($2 == $3) next
+      if (isnum($2) && isnum($3)) {
+        d = $2 - $3; if (d < 0) d = -d
+        # 1e-6 relative: far tighter than any real annotation change,
+        # far looser than float-repr noise
+        if (d <= 1e-6 * ((($2<0?-$2:$2)>1) ? ($2<0?-$2:$2) : 1)) { f++; next }
+      }
+      real++
+    }
+    END{ print real+0, f+0 }' "$tmp/j")
+EOF
+    if [ "$n" -eq 0 ]; then
+        if [ "${fmt:-0}" -gt 0 ]; then
+            printf '  PASS  %-24s 0/%s differ (%s float-repr only)\n' "$c" "$t" "$fmt"
+        else
+            printf '  PASS  %-24s 0/%s differ\n' "$c" "$t"
+        fi
+    else
+        printf '  FAIL  %-24s %s/%s differ — the VEP swap corrupted vcfanno input\n' "$c" "$n" "$t"; fail=1
+    fi
 done
 
 if [ "$ASM" = GRCh37 ]; then
