@@ -1,5 +1,124 @@
 # Changelog
 
+## v0.3.0 — Ensembl VEP 115 (2026-08-10)
+
+**Track B.** The container moves from VEP 110 to 115, which is the only way to
+advance the three resources that ride on the VEP cache rather than the bundle.
+
+| Resource | v0.2.0 | v0.3.0 |
+|---|---|---|
+| Ensembl VEP | 110 | **115** |
+| GENCODE (GRCh38) | v44 | **v49** |
+| gnomAD | r2.1 (2018) | **v4.1** |
+| dbSNP | b154 | **b156** |
+| container | `sigven/gvanno:1.7.0` | **`ghcr.io/biocentric/gvanno-nf:2026.1`** |
+| bundle | `20260801` | **`20260810`** |
+
+GRCh37 stays on GENCODE 19 — Ensembl freezes it there — so its transcript set
+is unchanged. That is deliberate and useful; see the gate below.
+
+### Measured effect
+
+On a 1,250-variant ClinVar panel per assembly:
+
+| | GRCh38 | GRCh37 |
+|---|---|---|
+| `gnomADe_AF` populated | 638 → **820** | 631 → **837** |
+| `DBSNPRSID` populated | 949 → **1048** | 922 → **1033** |
+| `gnomADg_AF` populated | 0 → **684** | n/a |
+
+About **+30%** more variants receive a population frequency. `gnomADg_AF` is
+populated for the first time in any release: `--af_gnomad` is a back-compat
+alias for `--af_gnomade` and only ever requested exomes, so the 11 `gnomADg_*`
+tags the bundle declared had always been empty. Fixed by passing
+`--af_gnomadg` on GRCh38 (Ensembl has no gnomAD genome data for GRCh37).
+
+### Validation
+
+Both assemblies pass, with GRCh37 as the control arm. Because its GENCODE is
+frozen, any churn there is attributable to the container rather than the data:
+
+```
+Feature 1/1246 (0.08%) · SYMBOL 0/1246 · HGVSp_short 0/1246 · CONSEQUENCE 0/1246
+```
+
+The single `Feature` difference was individually explained: VEP 115 picks the
+canonical / APPRIS-principal / CCDS transcript where 110 picked an
+alternative-5′UTR read-through. Same protein consequence (`p.Gln36Leu`) — a
+better pick, not a regression.
+
+Strict checks — `CLINVAR_*`, `NCER_PERCENTILE`, `GWAS_HIT` — show zero
+differences on both assemblies. Full results in
+[`refdata-builder/spec/TRACKB-GATE-RESULTS.md`](refdata-builder/spec/TRACKB-GATE-RESULTS.md).
+
+### ⚠️ Float formatting changed
+
+Python 3.7 / pandas 1.x → 3.10 / pandas 2.3 changed float repr:
+`97.90899999999999` now serialises as `97.909`. Values are identical; strings
+are not. **Diffing a v0.3.0 TSV against a v0.2.0 one will show thousands of
+spurious line changes.** Compare numerically, not textually.
+
+### The container
+
+Built on `ensemblorg/ensembl-vep:release_115.2` rather than from source — 258 MB
+against 1.5 GB, and it already provides the `modules` directory gvanno
+hardcodes. LOFTEE works: `LoF.pm` compiles against the VEP 115 Perl API, and
+nf-core/sarek runs the same plugin on 115.2 in production.
+
+**The gvanno helpers are not vendored.** `sigven/gvanno` carries no licence, so
+redistributing its source is not ours to do. The repo holds only our patches;
+the Dockerfile fetches the pinned upstream tarball at build time and applies
+them. See [`container/README.md`](container/README.md). Worth asking upstream
+for a licence — PCGR, same author, is MIT.
+
+Four patches, pinned to upstream commit `379ee24`:
+`VEP_VERSION` 110→115 (it drives both `--cache_version` and the on-disk cache
+paths, so this cannot be worked around from the bundle); `--af_gnomadg`;
+a guard on an unguarded `['SYMBOL']` lookup that GENCODE 49's ~16k unnamed loci
+would hit; and `check_subprocess()`, which swallowed **every** external failure
+including `vep` itself and exited 0.
+
+`pandas` is pinned `<3.0` — `variant.py:170-186` raises under pandas 3.
+Verified by execution.
+
+### Fixed
+
+- **`BUNDLE_PREPARE` published the entire reference tree.** No `withName` rule,
+  so it fell through to the catch-all `publishDir` and copied ~26 GB into
+  `outdir`. `--refdata_mode download` silently cost double the disk.
+- **`.gitignore` excluded every sha256 manifest.** `*.tsv` meant
+  `assets/refdata_manifest.*.tsv` was never committed, so a fresh clone had no
+  manifest and `BUNDLE_VERIFY` skipped checksum verification entirely. Both
+  fixes are also on the `0.2.0` branch.
+
+### Added
+
+- `refdata-builder/verify/check_csq_tags.sh` — runs the real VEP in the real
+  container and diffs emitted CSQ fields against the declared tag set, both
+  directions. It caught VEP 113's `gnomAD*_OTH_AF` → `*_REMAINING_AF` rename,
+  which would otherwise have left two columns permanently empty and three
+  silently dropped.
+- `refdata-builder/verify/compare_trackb.sh` — the redefined gate. Joins on
+  variant + **gene**, since GENCODE 44→49 makes `Feature` an unstable key.
+- `container/` — Dockerfile, patch series, build script.
+
+### Mirror
+
+<https://github.com/Biocentric/gvanno-nf/releases/tag/refdata-20260810>
+
+```
+gvanno.databundle.grch38.20260810.tgz  4.67 GB
+  92761062b3d436e3975ba3d424f098888bb8cfd094a5a293aa2e6636cbb7f955
+gvanno.databundle.grch37.20260810.tgz  4.64 GB
+  85ebccb77d5f14ce3dba4cc7ff63e076b687bbadc92f0a10b85dbe3b0f5f8b15
+```
+
+Verified consumable: direct URLs 404 by design, all six chunks resolve, manifests present.
+
+> **The GHCR package is private.** Until it is made public at
+> `github.com/orgs/Biocentric/packages`, every `nextflow run` needs a registry
+> login.
+
 ## v0.2.0 — 2026 annotation databases (2026-08-01)
 
 **`params.refdata_version` now defaults to `20260801`.** Pass

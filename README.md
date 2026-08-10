@@ -17,14 +17,19 @@ A Nextflow (DSL2, nf-core style) pipeline for **functional and clinical annotati
 
 ## Status
 
-**v0.2.0** — 2026 annotation databases. `--refdata_version` now defaults to
-`20260801`; pass `20231224` to reproduce a historical run. Both assemblies pass
-their gates with zero drift in every VEP-derived column, and a 1,250-variant
-panel produced zero wrong ClinVar IDs. Bundles are mirrored on
-[the `refdata-20260801` release](https://github.com/Biocentric/gvanno-nf/releases/tag/refdata-20260801).
+**v0.3.0** — Ensembl VEP 115. GENCODE v49, gnomAD v4.1 and dbSNP b156 now
+arrive via the rebuilt container (`ghcr.io/biocentric/gvanno-nf:2026.1`) with
+bundle `20260810`. On a 1,250-variant panel per assembly, ~30% more variants
+receive a population frequency and `gnomADg_AF` is populated for the first
+time. Both assemblies pass the Track B gate, with GRCh37 as the control arm
+(GENCODE frozen at 19 → 0.08% transcript churn). See
+[`refdata-builder/spec/TRACKB-GATE-RESULTS.md`](refdata-builder/spec/TRACKB-GATE-RESULTS.md).
 
-Not yet exercised: `--refdata_mode download` against that mirror. See
-[`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md).
+**v0.2.0** — 2026 annotation databases on VEP 110. Still selectable with
+`--refdata_version 20260801`.
+
+Note the float-repr change in v0.3.0 — diffing a v0.3.0 TSV against a v0.2.0
+one shows spurious line changes. See [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md).
 
 **v0.1.0dev** — both assemblies verified end to end.
 
@@ -256,7 +261,10 @@ What it contains:
 | MIM phenotypes | 3,853 genes | **5,271 genes** | NCBI `mim2gene_medgen` ∪ prior |
 | Gene/transcript xref | Ensembl 110 | **GENCODE 49** | PCGR 2.3, remapped |
 | ncER | v1.0 (2019) | v1.0 — carried forward | no newer release exists |
-| VEP · GENCODE · gnomAD · dbSNP | 110 · v44 · r2.1 · b154 | *unchanged* | Track B |
+| **VEP** | 110 | **115** | container |
+| **GENCODE** (GRCh38) | v44 | **v49** | VEP cache |
+| **gnomAD** | r2.1 (2018) | **v4.1** | VEP cache |
+| **dbSNP** | b154 | **b156** | VEP cache |
 
 **Every source is account-free.** COSMIC (Cancer Gene Census) and OMIM
 (`genemap2`) both gate downloads behind registration; the builder avoids them

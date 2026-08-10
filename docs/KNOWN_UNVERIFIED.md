@@ -2,114 +2,112 @@
 
 Kept honest and current. If something here is stale, that is a bug.
 
-Last updated: **2026-08-01**, bundle `20260801`, container `sigven/gvanno:1.7.0`.
+Last updated: **2026-08-10**, bundle `20260810`, container
+`ghcr.io/biocentric/gvanno-nf:2026.1` (VEP 115).
 
 ---
 
 ## Verified
 
-### Pipeline gates — both assemblies pass
+### Track B gate — both assemblies pass
 
-Run on hephaestus (Nextflow 26.04.3 / Docker), comparing bundle `20260801`
-against `20231224` on identical input with the same VEP 110 cache. Rows joined
-on `(CHROM, POS, REF, ALT, Feature)` by
-[`refdata-builder/verify/compare_runs.sh`](../refdata-builder/verify/compare_runs.sh).
+1,250-variant ClinVar panel per assembly, comparing v0.2.0 as shipped
+(VEP 110 + bundle `20260801`) against v0.3.0 (VEP 115 + `20260810`). Rows joined
+on variant + **gene**, since GENCODE 44→49 makes `Feature` an unstable key.
 
 | | GRCh38 | GRCh37 |
 |---|---|---|
-| input | 11-variant fixture | upstream example VCF, 8871 variants |
-| shape | 189 cols × 11 rows | 221 cols × 8871 rows |
-| rows lost / gained | 0 / 0 | 1 / 0 (explained below) |
-| drift in VEP-derived + `NCER_PERCENTILE` | **zero** | **zero** |
-| `EFFECT_PREDICTIONS` canary | populated | populated |
-| `CLINVAR_CLNSIG` grammar | plain | plain |
-| verdict | **PASSED** | **PASSED** |
+| strict (`CLINVAR_*`, `NCER_PERCENTILE`, `GWAS_HIT`) | 0 differ | 0 differ |
+| control (`Feature`/`SYMBOL`/`HGVSp_short`/`CONSEQUENCE`) | n/a — GENCODE moved | **0.08% / 0 / 0 / 0** |
+| `gnomADe_AF` | 638 → 820 | 631 → 837 |
+| `DBSNPRSID` | 949 → 1048 | 922 → 1033 |
+| `gnomADg_AF` | 0 → 684 | n/a |
+| canaries | pass | pass |
 
-The one GRCh37 row difference is `21:16031396 T>C / ENST00000400562`. The
-baseline emitted **two** rows there, identical except that one carried
-`GENENAME` and the other did not — a duplicate gene-xref entry in the
-`20231224` bundle. Emitting one row is the correct behaviour.
+GRCh37 is the control arm: Ensembl freezes it at GENCODE 19, so its VEP 115
+cache carries the same transcript set as 110 and any churn is attributable to
+the container rather than the data. The single `Feature` difference is
+explained in
+[`refdata-builder/spec/TRACKB-GATE-RESULTS.md`](../refdata-builder/spec/TRACKB-GATE-RESULTS.md)
+— VEP 115 picks the canonical/CCDS transcript where 110 picked an
+alternative-5′UTR read-through, with the same protein consequence.
 
-### 1,250-variant validation panel
+### Container
 
-250 variants in each ClinVar tier, one per gene, all 24 chromosomes, sampled
-from the prior bundle so every one is known to have been annotatable before.
-**Zero received the wrong ClinVar ID.** 1245/1250 matched; the five misses were
-each traced to ClinVar having retired the record upstream — absent from the
-NCBI `20260728` source by ID *and* by locus. Full result in
-[`refdata-builder/spec/PANEL-RESULTS.md`](../refdata-builder/spec/PANEL-RESULTS.md).
+`LoF.pm` and `NearestExonJB.pm` both compile against the VEP 115 Perl API
+inside the image. The build asserts its own contract before tagging: ten
+binaries, five LOFTEE Perl modules, `pandas<3`, `VEP_VERSION == 115`, both
+plugin files present, both code patches applied.
+
+### `--refdata_mode download`
+
+Verified on **both** assemblies against the live mirror, fresh empty
+`--refdata_dir`, nothing pre-staged. The direct tarball URL 404s by design,
+`BUNDLE_FETCH` falls through to `.parts.txt` and reassembles three ~1.9 GB
+chunks, and `BUNDLE_VERIFY` checksums all 26 entries against a populated
+manifest.
 
 ### Bundle contracts
 
-`check_bundle.py`: **18 checks, 0 failed** on both assemblies. Manifests
-(26 entries each) self-check with `sha256sum -c`. Both tarballs checksummed.
+`check_bundle.py` 18/18 on both assemblies; `check_csq_tags.sh` clean against
+live VEP 115 output; manifests self-verify.
 
-### Mirror
+---
 
-<https://github.com/Biocentric/gvanno-nf/releases/tag/refdata-20260801> — 10
-assets. Verified the way `BUNDLE_FETCH` consumes it: `parts.txt` manifests
-fetch and list three chunks each, all six chunk URLs return 200, and the direct
-unchunked URL returns 404 so the fallback path is actually reached.
+## Known behaviour changes
+
+### Float representation changed ⚠️
+
+Python 3.7 / pandas 1.x → 3.10 / pandas 2.3 changed float repr:
+`97.90899999999999` now serialises as `97.909`. The values are identical.
+
+**Diffing a v0.3.0 TSV against a v0.2.0 one shows thousands of spurious line
+changes.** Compare numerically. `compare_trackb.sh` does; a plain `diff` does
+not.
+
+### `DBNSFP_*` column membership
+
+dbNSFP v5.3 dropped `LRT`, `FATHMM`, `FATHMM_MKL_coding` and `Aloft`, so
+`DBNSFP_FATHMM`, `DBNSFP_FATHMM_MKL` and `DBNSFP_ALOFTPRED` are declared but
+empty. v5.3's new predictors (AlphaMissense, REVEL, CADD, ESM1b…) reach the
+combined `EFFECT_PREDICTIONS` string but get no column of their own — the
+container's `algo_mapping` dict fixes the emittable tag set at 17.
+
+### `gnomADg_*` on GRCh37
+
+Permanently empty. Ensembl carries no gnomAD **genome** data for GRCh37, only
+exomes. The tag dictionary is shared between assemblies, so the tags are
+declared on both.
 
 ---
 
 ## Not verified
 
-### `--refdata_mode download` against the new mirror ⚠️ most important gap
-
-The mirror's URLs resolve and the chunk layout is correct, but **no end-to-end
-`download` run has been done against it**. That is the path a new user takes,
-and it exercises code that has never run in anger: chunk reassembly in
-`BUNDLE_FETCH`, `BUNDLE_PREPARE`'s FASTA re-encoding, and `BUNDLE_VERIFY`
-against a *populated* manifest — which has never happened before, because the
-`20231224` manifest shipped empty and the checksum step silently skipped.
-
-Everything so far has used pre-staged bundles. Run this before trusting the
-documented quick-start.
-
-### `check_bundle.py` validates structure, not value grammar
-
-It checks paths, tag names, field counts and indexes. It does **not** check
-that values look right. This is not theoretical: the first GRCh37 package
-silently shipped PCGR's ClinVar, whose `CLINVAR_CLNSIG` uses a
-`CUI:significance:count` encoding gvanno cannot parse, and `check_bundle.py`
-passed it 18/18. The gate now has a grammar canary, but the *build-time* check
-still doesn't. Sampling records per tag and asserting shape would close it.
-
 ### `--scatter_by chromosome`
 
-Still never exercised end-to-end, on either assembly. It was rewritten in
-v0.1.0dev to enumerate contigs from the VCF's own tabix index and has not been
-run since.
+Still never exercised end to end, on either assembly or either version.
 
-### GRCh37 gene xref — structurally verified only
+### The GHCR package is private
 
-34 fields, CGC and MIM injected, 196,483 BED records matching the prior bundle
-exactly (GRCh37 is frozen at GENCODE 19). But the GRCh37 gate input is the
-upstream example VCF, which is not chosen to exercise cancer-gene columns —
-`CGC_TIER`, `TSG`, `ONCOGENE` and `MIM_PHENOTYPE_ID` coverage on GRCh37 has not
-been checked against a panel the way GRCh38's ClinVar was.
+Anonymous pulls return 403, so every `nextflow run` currently needs a registry
+login. Set it public at `github.com/orgs/Biocentric/packages`.
 
-### Bit-identical comparison against upstream `gvanno.py`
+### `check_bundle.py` validates structure, not values
 
-Permanently retired. There is no upstream to be identical to — gvanno froze at
-v1.7.0 (2023-12-29) and publishes no bundle newer than `20231224`. The
-structural gates above replace it. `--refdata_version 20231224` still selects
-the old bundle if you need to reproduce a historical run.
+`check_csq_tags.sh` now covers the CSQ tag set specifically, but the structural
+checker still samples only file heads (n=200/2000) and does not validate value
+grammar. That is the hole PCGR's `CUI:significance:count` ClinVar encoding
+slipped through.
 
-### Track B — VEP 115
+### Wider clinical spot-checking
 
-Not started. VEP stays at 110, so GENCODE (v44/v19), gnomAD (r2.1) and dbSNP
-(b154) are unchanged in this release. See the plan in
-`X:\claude\nf-gvanno-refdata-2026\`.
+The 1,250-variant panel is sampled from ClinVar and checks round-tripping and
+coverage. It is not a curated clinical truth set, and no orthogonal source has
+been used to confirm the annotations are *correct* rather than *consistent*.
 
 ### Housekeeping
 
-- `nf-test` coverage: none.
-- CI: none.
-- `MULTIQC` and `BCFTOOLS_CONCAT` config selectors still match no process —
-  Nextflow logs a benign `WARN` for each.
-- Literal `<NA>` strings appear in `ENTREZGENE` (118 rows of 8871 on GRCh37).
-  A pandas artefact from the container's own summarise/finalize, present in
-  the `20231224` output too (122 rows) and slightly reduced. Container-side,
-  not fixable from the bundle.
+- `nf-test` coverage: none. CI: none.
+- `MULTIQC` and `BCFTOOLS_CONCAT` config selectors still match no process.
+- Literal `<NA>` in `ENTREZGENE` (~118/8871 rows) — a pandas artefact from the
+  container's own summarise/finalize, present in v0.2.0 too.
