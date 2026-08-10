@@ -55,17 +55,33 @@ unchunked URL returns 404 so the fallback path is actually reached.
 
 ## Not verified
 
-### `--refdata_mode download` against the new mirror ⚠️ most important gap
+### ~~`--refdata_mode download`~~ — VERIFIED 2026-08-10
 
-The mirror's URLs resolve and the chunk layout is correct, but **no end-to-end
-`download` run has been done against it**. That is the path a new user takes,
-and it exercises code that has never run in anger: chunk reassembly in
-`BUNDLE_FETCH`, `BUNDLE_PREPARE`'s FASTA re-encoding, and `BUNDLE_VERIFY`
-against a *populated* manifest — which has never happened before, because the
-`20231224` manifest shipped empty and the checksum step silently skipped.
+Ran end to end on hephaestus against the live mirror, GRCh38, fresh empty
+`--refdata_dir`, nothing pre-staged. 3/3 processes, exit 0.
 
-Everything so far has used pre-staged bundles. Run this before trusting the
-documented quick-start.
+```
+[fetch] trying .../gvanno.databundle.grch38.20260801.tgz          -> 404
+[fetch] trying chunked .../gvanno.databundle.grch38.20260801.tgz.parts.txt
+[fetch] manifest found, reassembling chunks
+[fetch] ok (chunked)
+
+[verify] checking sha256 against 26 entries
+         26 files OK
+```
+
+Three things that had never run together all held:
+
+- **Chunk reassembly** — the direct URL 404s by design, `BUNDLE_FETCH` falls
+  through to `.parts.txt` and stitches three ~1.9 GB chunks back together.
+- **Checksum verification on a downloaded tree** — every prior verification was
+  against a locally built bundle whose files were correct by construction. This
+  proves the split → upload → reassemble round trip is byte-exact.
+- **The assembly filter** — the manifest holds 52 entries across both
+  assemblies; only the 26 for GRCh38 were checked, rather than failing on the
+  absent GRCh37 files.
+
+Not yet run for GRCh37, though it shares every code path.
 
 ### `check_bundle.py` validates structure, not value grammar
 
