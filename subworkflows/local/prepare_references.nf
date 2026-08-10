@@ -110,6 +110,13 @@ workflow PREPARE_REFERENCES {
     ch_vep_cache     = ch_root_verified.map { root -> file("${root}/data/${assembly}/.vep") }
 
     emit:
-    refdata_dir = ch_root_verified
-    vep_cache   = ch_vep_cache
+    // .first() converts these back to VALUE channels. They must be values, not
+    // queues: .combine() above demotes ch_root's value channel to a queue with
+    // exactly one element, and a process invoked as
+    // VEP(<24-shard queue>, <1-item queue>, <1-item queue>) zips its inputs
+    // positionally and stops at the SHORTEST -- so only one shard is ever
+    // annotated and the other 23 are silently discarded, with exit 0.
+    // Invisible when scatter_by=none, because there is only one shard.
+    refdata_dir = ch_root_verified.first()
+    vep_cache   = ch_vep_cache.first()
 }
