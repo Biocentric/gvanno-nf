@@ -23,14 +23,16 @@ OUT=/mnt/big/gvanno-build/bundle
 SRC=/mnt/big/gvanno-refdata
 BUILD=/mnt/big/gvanno-build
 STEPOUT=
+VEPVER=110
 CONTAINER=sigven/gvanno:1.7.0
 
-while getopts ":a:v:o:s:h" opt; do
+while getopts ":a:v:o:s:e:h" opt; do
     case $opt in
         a) ASM=$OPTARG ;;
         v) VERSION=$OPTARG ;;
         o) OUT=$OPTARG ;;
         s) STEPOUT=$OPTARG ;;   # dir holding this assembly's built inputs
+        e) VEPVER=$OPTARG ;;    # Ensembl/VEP release the bundle targets
         h) sed -n '2,18p' "$0"; exit 0 ;;
         *) echo "unknown option -$OPTARG" >&2; exit 2 ;;
     esac
@@ -210,6 +212,17 @@ log "        DBNSFP_* tags declared: $(grep -c '^DBNSFP_' "$D/vcf_infotags_gvann
 # --------------------------------------------------------------------------
 # 7. RELEASE_NOTES
 # --------------------------------------------------------------------------
+# GENCODE, dbSNP and gnomAD ride on the VEP cache, so they are a property of
+# the Ensembl release rather than of anything the builder produces. Derive them
+# instead of hand-typing, or RELEASE_NOTES silently misreports the bundle.
+case "$VEPVER" in
+    110) GENCODE="44/19"; DBSNP="build 154"; GNOMAD="r2.1 (October 2018)" ;;
+    115) GENCODE="49/19"; DBSNP="build 156"; GNOMAD="v4.1" ;;
+    116) GENCODE="50/19"; DBSNP="build 156"; GNOMAD="v4.1" ;;
+    *)   die "unknown VEP release '$VEPVER' — add its cache contents to the table in assemble-bundle.sh" ;;
+esac
+log "targeting Ensembl/VEP $VEPVER -> gencode $GENCODE, dbsnp $DBSNP, gnomad $GNOMAD"
+
 cat > "$D/RELEASE_NOTES" <<NOTES
 ##GVANNO_SOFTWARE_VERSION = 1.7.0
 ##GVANNO_DB_VERSION = $VERSION
@@ -217,12 +230,13 @@ pfam = from PCGR 20260620
 ncER = v1.0 (March 2019)
 uniprot = from PCGR 20260620
 cancerhotspots = v3 (2026)
-dbsnp = build 154
+dbsnp = $DBSNP
 dbnsfp = v5.3 (October 2025)
-gnomad = r2.1 (October 2018)
+gnomad = $GNOMAD
 gwas = from PCGR 20260620
 clinvar = 2026-07-28 (NCBI direct)
-gencode = 44/19
+gencode = $GENCODE
+vep = $VEPVER
 cgc = v101 (2025, via PCGR 20250314)
 mim_phenotype = NCBI mim2gene_medgen unioned with 20231224
 NOTES
