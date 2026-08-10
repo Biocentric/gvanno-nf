@@ -1,0 +1,22 @@
+--- a/src/gvanno/gvanno_vep.py	2026-08-10 08:08:12.310095300 +0200
++++ b/src/gvanno/gvanno_vep.py	2026-08-10 08:08:12.487778800 +0200
+@@ -58,11 +58,18 @@
+         f'{gvanno_vars.VEP_VERSION}_{gvanno_vars.VEP_ASSEMBLY[genome_assembly]}', 
+         f'human_ancestor.fa.gz')
+ 
++    ## [gvanno-nf] --af_gnomad is a back-compat alias for --af_gnomade and
++    ## yields EXOME frequencies only. Genome frequencies need --af_gnomadg,
++    ## which Ensembl carries for GRCh38 only.
++    gnomad_flags = '--af_gnomad'
++    if gvanno_vars.VEP_ASSEMBLY[genome_assembly] == 'GRCh38':
++        gnomad_flags = '--af_gnomad --af_gnomadg'
++
+     plugins_in_use = "NearestExonJB, LoF"
+ 
+     # List all VEP flags used when calling VEP
+     vep_flags = (
+-        f'--hgvs --af_gnomad --variant_class --domains --symbol --protein --ccds --mane '
++        f'--hgvs {gnomad_flags} --variant_class --domains --symbol --protein --ccds --mane '
+         f'--uniprot --appris --biotype --tsl --canonical --format vcf --cache --numbers '
+         f'--total_length --allele_number --failed 1 --no_stats --no_escape --xref_refseq --vcf '
+         f'--check_ref --dont_skip --flag_pick_allele_gene --plugin NearestExonJB,max_range=50000 '

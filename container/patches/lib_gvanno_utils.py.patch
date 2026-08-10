@@ -1,0 +1,13 @@
+--- a/src/gvanno/lib/gvanno/utils.py	2026-08-10 08:08:12.317960200 +0200
++++ b/src/gvanno/lib/gvanno/utils.py	2026-08-10 08:08:12.487778800 +0200
+@@ -55,7 +55,9 @@
+             print(str(output.decode()).rstrip())
+     except subprocess.CalledProcessError as e:
+         print(e.output.decode())
+-        exit(0)
++        ## [gvanno-nf] upstream exits 0 here, so a failing vep/vcfanno/bcftools
++        ## call is indistinguishable from success and Nextflow never sees it.
++        exit(e.returncode if e.returncode else 1)
+ 
+ def get_loftee_dir():
+     #pcgr_conda_env = conda_prefix_basename()

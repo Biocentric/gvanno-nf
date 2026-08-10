@@ -1,0 +1,18 @@
+--- a/src/gvanno/lib/gvanno/gvanno_vars.py	2026-08-10 08:08:12.312783100 +0200
++++ b/src/gvanno/lib/gvanno/gvanno_vars.py	2026-08-10 08:08:12.487778800 +0200
+@@ -10,13 +10,13 @@
+ RECOMMENDED_N_MUT_SIGNATURE = 200
+ 
+ ## GENCODE
+-GENCODE_VERSION = {'grch38': 44,'grch37': 19}
++GENCODE_VERSION = {'grch38': 49,'grch37': 19}
+ 
+ ## vcfanno
+ VCFANNO_MAX_PROC = 15
+ 
+ ## VEP settings/versions
+-VEP_VERSION = '110'
++VEP_VERSION = '115'
+ VEP_ASSEMBLY = {'grch38': 'GRCh38','grch37': 'GRCh37'}
+ VEP_MIN_FORKS = 1
+ VEP_MAX_FORKS = 8

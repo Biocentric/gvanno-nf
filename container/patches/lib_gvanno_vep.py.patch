@@ -1,0 +1,16 @@
+--- a/src/gvanno/lib/gvanno/vep.py	2026-08-10 08:08:12.316912800 +0200
++++ b/src/gvanno/lib/gvanno/vep.py	2026-08-10 08:08:12.487778800 +0200
+@@ -83,7 +83,12 @@
+     ## if VEP/Ensembl does not provide a symbol, use symbol provided by PCGR/CPSR gene_transcript_xref map
+     if csq_record['SYMBOL'] is None and ensembl_transcript_id != ".":
+         if ensembl_transcript_id in transcript_xref_map:
+-            csq_record['SYMBOL'] = transcript_xref_map[ensembl_transcript_id]['SYMBOL']
++            ## [gvanno-nf] guard the inner key: make_transcript_xref_map only
++            ## creates an annotation key when the field is non-empty, so a
++            ## transcript with a blank symbol raises KeyError here. GENCODE 49
++            ## adds ~16k mostly unnamed loci. Matches the pattern at line 233.
++            if 'SYMBOL' in transcript_xref_map[ensembl_transcript_id]:
++                csq_record['SYMBOL'] = transcript_xref_map[ensembl_transcript_id]['SYMBOL']
+     
+     # Assign coding status, protein change, coding sequence change, last exon/intron status etc as VCF info tags
+     csq_record = assign_cds_exon_intron_annotations(csq_record)
