@@ -14,6 +14,11 @@ __pycache__/
 # ...but keep committed test fixtures that live under assets/
 !assets/*.vcf
 !assets/*.vcf.gz
+# ...and the sha256 manifests. Without this the *.tsv rule above silently
+# excludes them from every commit, `git add -A` says nothing, and a fresh
+# clone has no manifest -- so BUNDLE_VERIFY skips checksum verification
+# entirely while appearing to work.
+!assets/refdata_manifest.*.tsv
 
 # ...and the captured bundle format spec (headers/dictionaries only, no payload)
 !refdata-builder/spec/**
