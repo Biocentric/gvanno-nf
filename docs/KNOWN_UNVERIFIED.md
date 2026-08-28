@@ -129,3 +129,12 @@ Not started. VEP stays at 110, so GENCODE (v44/v19), gnomAD (r2.1) and dbSNP
   A pandas artefact from the container's own summarise/finalize, present in
   the `20231224` output too (122 rows) and slightly reduced. Container-side,
   not fixable from the bundle.
+
+## Upstream licence
+
+`sigven/gvanno` has no `LICENSE` file. v0.2.0 pulls `sigven/gvanno:1.7.0` at
+runtime rather than redistributing anything, so this does not affect use — but
+it is why v0.3.0's container is built from a patch series rather than a
+vendored copy.
+
+Sigve Nakken agreed in principle (2026-08-10) to add MIT. Not yet committed.
