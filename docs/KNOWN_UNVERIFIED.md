@@ -105,10 +105,21 @@ byte-identical to the unscattered run after sorting.
 Not yet run on GRCh37, though it shares every code path and the contig
 enumeration is assembly-agnostic (`tabix -l` on the validated VCF).
 
-### The GHCR package is private
+### The GHCR package is private — and should stay private for now
 
-Anonymous pulls return 403, so every `nextflow run` currently needs a registry
-login. Set it public at `github.com/orgs/Biocentric/packages`.
+Anonymous pulls return 403, so every `nextflow run` needs a registry login.
+
+This is a GitHub visibility default, not a restriction anyone placed on us — we
+built and pushed the image. But **do not flip it to public yet**: the image
+bakes the gvanno helper scripts into a layer, and upstream has no `LICENSE`
+file, so publishing it publicly is redistribution of code that is formally
+all-rights-reserved.
+
+Sigve Nakken has agreed in principle (2026-08-10) to add MIT to
+`sigven/gvanno`. Once the file is actually in the repository, making the package
+public is fine — and the container's patch-series indirection can be replaced
+by simply vendoring the source. Until then a `docker login` on each of the two
+hosts is the cheaper trade.
 
 ### `check_bundle.py` validates structure, not values
 

@@ -16,13 +16,22 @@ GitHub at build time, applies the patches, and bakes the result into the image
 — the same shape a distribution package uses. Our repository redistributes
 nothing that is not ours.
 
-That is a pragmatic mitigation, not a legal opinion. The clean fix is for
-upstream to add a licence:
+That is a pragmatic mitigation, not a legal opinion.
 
-> **Worth asking.** PCGR, by the same author, is MIT. gvanno having no licence
-> looks like an oversight rather than intent. Contact `sigven AT ifi.uio.no`.
-> If a licence is granted, vendoring becomes the simpler option and this
-> indirection can be dropped.
+> **Status (2026-08-10): Sigve Nakken has agreed in principle to add an MIT
+> licence to `sigven/gvanno`. The `LICENSE` file is not in the repository yet.**
+>
+> Until it lands, treat this as intent rather than a grant. Two consequences:
+>
+> - Development, local use and the private container image are unaffected —
+>   they never depended on it.
+> - **Do not make the GHCR package public yet.** The image bakes the helper
+>   scripts into a layer, so publishing it publicly is redistribution of
+>   upstream's code. That is the one action worth holding.
+>
+> Once the file appears: drop this section, vendor `src/gvanno/` at the pinned
+> commit, and delete the build-time fetch. The patch series exists only to
+> avoid redistributing unlicensed source, so it becomes unnecessary.
 
 Note this exposure is not new in Track B — `sigven/gvanno:1.7.0`, which
 v0.1.0 and v0.2.0 both pull at runtime, contains the same unlicensed code.
