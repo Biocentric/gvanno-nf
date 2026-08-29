@@ -12,6 +12,18 @@ patientB,/data/B.vcf.gz,
 - `vcf` — path to a single-sample germline VCF (≥ v4.2).
 - `vcf_index` — optional and ignored. `VALIDATE_VCF` re-normalises and re-indexes every input, so a pre-existing index is never used; plain uncompressed `.vcf` inputs are fine.
 
+## Container registry login (v0.3.0 only)
+
+v0.3.0 uses a private GHCR image, so authenticate once per machine before the
+first run:
+
+```bash
+echo $GHCR_TOKEN | docker login ghcr.io -u Biocentric --password-stdin
+```
+
+Without it Nextflow fails on the first process with a pull error. v0.2.0 needs
+no login — it uses the public `sigven/gvanno:1.7.0`. Rationale in the README.
+
 ## Reference data (one-off setup)
 
 The pinned gvanno bundle is ~20 GB across four sources. Stage it once:
@@ -53,11 +65,35 @@ nextflow run Biocentric/gvanno-nf -profile docker \
 | `--vep_pick_order` | `--vep_pick_order` | mane_select,mane_plus_clinical,canonical,appris,tsl,biotype,ccds,rank,length |
 | `--vep_regulatory` | `--vep_regulatory` | false |
 | `--vep_gencode_basic` | `--vep_gencode_basic` | false |
-| `--vep_lof_prediction` | `--vep_lof_prediction` | false |
+| `--vep_lof_prediction` | `--vep_lof_prediction` | false — **no effect, see below** |
 | `--vep_no_intergenic` | `--vep_no_intergenic` | false |
 | `--vep_coding_only` | `--vep_coding_only` | false |
 | `--vcfanno_n_processes` | `--vcfanno_n_processes` | 4 |
-| `--oncogenicity_annotation` | `--oncogenicity_annotation` | false (requires `--vep_lof_prediction`) |
+| `--oncogenicity_annotation` | `--oncogenicity_annotation` | false |
+
+### `--vep_lof_prediction` does nothing — LOFTEE always runs
+
+Verified against upstream `gvanno_vep.py` at the pinned commit and confirmed by
+running the pipeline with the flag at its default (`false`):
+
+```
+LoF 227 rows · LoF_filter 18 · LoF_flags 4 · LOSS_OF_FUNCTION 1250
+```
+
+`--plugin LoF,...` is appended **unconditionally** at `gvanno_vep.py:93`. The
+flag's only three occurrences are an argparse declaration, a config assignment,
+and a log line that prints "ON"/"OFF" — no other module references it. So:
+
+- LOFTEE runs on every job, and you pay its runtime cost whether or not you ask
+  for it.
+- `LoF`, `LoF_filter`, `LoF_flags`, `LoF_info` and `LOSS_OF_FUNCTION` are always
+  populated.
+- `--oncogenicity_annotation` has no real dependency on it; the LoF data it
+  needs is always present. The "requires" note previously in this table was
+  wrong.
+
+The parameter is kept only for CLI compatibility with upstream `gvanno.py`.
+This is upstream behaviour, not something this pipeline introduces.
 
 ## Performance knobs (new vs. upstream)
 

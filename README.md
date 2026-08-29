@@ -83,6 +83,33 @@ samplesheet.csv ─► │  INPUT_CHECK         │
 
 Every process runs in a single container, `sigven/gvanno:1.7.0` — the same image upstream gvanno uses. There is nothing else to install.
 
+## ⚠️ The container is private
+
+v0.3.0 runs on `ghcr.io/biocentric/gvanno-nf:2026.1`, which is a **private**
+GHCR package. Authenticate once per machine before the first run, or Nextflow
+fails at image pull:
+
+```bash
+echo $GHCR_TOKEN | docker login ghcr.io -u Biocentric --password-stdin
+```
+
+(any token with `read:packages` will do; `gh auth token` works if the gh CLI is
+logged in with that scope).
+
+It is private deliberately, not by oversight. The image bakes the gvanno helper
+scripts into a layer, and upstream `sigven/gvanno` has no `LICENSE` file, so
+publishing it would redistribute code that is formally all-rights-reserved.
+Sigve Nakken has agreed in principle to add MIT; once that file exists the
+package can be made public and this step disappears. See
+[`container/README.md`](container/README.md).
+
+**To run without any registry login**, use v0.2.0 instead — it pulls the public
+`sigven/gvanno:1.7.0` and still carries the 2026 databases, just on VEP 110:
+
+```bash
+nextflow run Biocentric/gvanno-nf -r 0.2.0 -latest -profile docker ...
+```
+
 ## Requirements
 
 - **Nextflow** ≥ 23.10 (tested on 25.04 and 26.04)
@@ -187,11 +214,11 @@ Every annotation tag is documented in the **header of the annotated VCF** — th
 | `--vep_pick_order` | `--vep_pick_order` | `mane_select,mane_plus_clinical,canonical,appris,tsl,biotype,ccds,rank,length` |
 | `--vep_regulatory` | `--vep_regulatory` | false |
 | `--vep_gencode_basic` | `--vep_gencode_basic` | false |
-| `--vep_lof_prediction` | `--vep_lof_prediction` | false |
+| `--vep_lof_prediction` | `--vep_lof_prediction` | false — **no effect, see below** |
 | `--vep_no_intergenic` | `--vep_no_intergenic` | false |
 | `--vep_coding_only` | `--vep_coding_only` | false |
 | `--vcfanno_n_processes` | `--vcfanno_n_processes` | 4 |
-| `--oncogenicity_annotation` | `--oncogenicity_annotation` | false (requires `--vep_lof_prediction`) |
+| `--oncogenicity_annotation` | `--oncogenicity_annotation` | false |
 
 ### Added by this pipeline
 

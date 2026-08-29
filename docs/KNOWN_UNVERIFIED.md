@@ -47,6 +47,18 @@ Verified on **both** assemblies against the live mirror, fresh empty
 chunks, and `BUNDLE_VERIFY` checksums all 26 entries against a populated
 manifest.
 
+### End-to-end with shipped defaults
+
+Run on hephaestus with **no overrides** — exactly the config a user gets:
+`ghcr.io/biocentric/gvanno-nf:2026.1`, bundle `20260810`, 11-variant fixture.
+8/8 processes, 190 columns × 11 rows, every variant resolved to the expected
+gene and protein change.
+
+Population frequencies are biologically sensible, which is a useful
+independent sanity signal: F5 Leiden `gnomADe_AF` 0.0219, HFE C282Y 0.0590,
+MTHFR C677T 0.3227 — all consistent with known European frequencies.
+`gnomADg_AF` populated on 7/11.
+
 ### Bundle contracts
 
 `check_bundle.py` 18/18 on both assemblies; `check_csq_tags.sh` clean against
@@ -102,8 +114,10 @@ v0.1.0dev through v0.2.0 as a documented but unexercised feature.
 After the fix: 24 VEP / 24 VCFANNO / 24 SUMMARISE tasks, 1,250 rows, and output
 byte-identical to the unscattered run after sorting.
 
-Not yet run on GRCh37, though it shares every code path and the contig
-enumeration is assembly-agnostic (`tabix -l` on the validated VCF).
+Verified on **both assemblies** and on **both branches' own code paths** —
+including 0.2.0 code with VEP 110 on GRCh37 (24 shards, 1250 rows,
+byte-identical), which mattered because every earlier run used 0.3.0 code with
+the VEP 115 container.
 
 ### The GHCR package is private — and should stay private for now
 
