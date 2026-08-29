@@ -23,7 +23,9 @@ their gates with zero drift in every VEP-derived column, and a 1,250-variant
 panel produced zero wrong ClinVar IDs. Bundles are mirrored on
 [the `refdata-20260801` release](https://github.com/Biocentric/gvanno-nf/releases/tag/refdata-20260801).
 
-Not yet exercised: `--refdata_mode download` against that mirror. See
+Since verified: `--refdata_mode download` against the live mirror (both
+assemblies, chunk reassembly + checksums), and `--scatter_by chromosome` — the
+latter after fixing a bug that silently annotated only one shard. See
 [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md).
 
 **v0.1.0dev** — both assemblies verified end to end.
@@ -34,7 +36,7 @@ Not yet exercised: `--refdata_mode download` against that mirror. See
 | **GRCh38** | 3/3 processes ✔ — fresh download, 25 GB, 29 m 50 s | 8/8 processes ✔ — 11-variant fixture, all resolved to the expected gene + protein change | 2026-07-31 |
 | **GRCh38** | pre-staged, sha256-verified | 8/8 processes ✔ in ~60 s — re-run as the v0.2.0 baseline, 189 columns × 11 rows, `EFFECT_PREDICTIONS` 11/11 | 2026-08-01 |
 
-Not yet verified: bit-identical diff against an upstream `gvanno.py` run, `--scatter_by chromosome`, nf-test coverage, CI. See [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) — it is kept honest and current.
+Not yet verified: nf-test coverage, CI, and clinical spot-checking against an orthogonal source. See [`docs/KNOWN_UNVERIFIED.md`](docs/KNOWN_UNVERIFIED.md) — it is kept honest and current.
 
 ## Pipeline summary
 
@@ -182,11 +184,11 @@ Every annotation tag is documented in the **header of the annotated VCF** — th
 | `--vep_pick_order` | `--vep_pick_order` | `mane_select,mane_plus_clinical,canonical,appris,tsl,biotype,ccds,rank,length` |
 | `--vep_regulatory` | `--vep_regulatory` | false |
 | `--vep_gencode_basic` | `--vep_gencode_basic` | false |
-| `--vep_lof_prediction` | `--vep_lof_prediction` | false |
+| `--vep_lof_prediction` | `--vep_lof_prediction` | false — **no effect, see below** |
 | `--vep_no_intergenic` | `--vep_no_intergenic` | false |
 | `--vep_coding_only` | `--vep_coding_only` | false |
 | `--vcfanno_n_processes` | `--vcfanno_n_processes` | 4 |
-| `--oncogenicity_annotation` | `--oncogenicity_annotation` | false (requires `--vep_lof_prediction`) |
+| `--oncogenicity_annotation` | `--oncogenicity_annotation` | false |
 
 ### Added by this pipeline
 
