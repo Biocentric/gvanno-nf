@@ -112,8 +112,16 @@ large cohort would have received a plausible file missing most of their variants
 After the fix: 24 VEP / 24 VCFANNO / 24 SUMMARISE tasks, 1,250 rows, output
 byte-identical to the unscattered run after sorting.
 
-Verified on GRCh38 only, though the contig enumeration is assembly-agnostic
-(`tabix -l` on the validated VCF).
+Verified on **both assemblies**, and on this branch's own code path — 0.2.0
+code, `sigven/gvanno:1.7.0`, VEP 110, bundle `20260801`, GRCh37:
+
+```
+24 SCATTER shards · 24 VEP · 24 VCFANNO · 24 SUMMARISE · 1 CONCAT_VCFS
+rows 1250 = 1250 · cols 192 = 192 · content byte-identical after sorting
+```
+
+That mattered: every earlier scatter run used 0.3.0 code with the VEP 115
+container, so until now this branch carried a fix verified only by proxy.
 
 ### GRCh37 gene xref — structurally verified only
 
