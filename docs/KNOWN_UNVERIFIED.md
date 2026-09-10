@@ -47,6 +47,26 @@ Verified on **both** assemblies against the live mirror, fresh empty
 chunks, and `BUNDLE_VERIFY` checksums all 26 entries against a populated
 manifest.
 
+Re-run end to end on the shipped default `20260810`, GRCh38, from clean:
+
+```
+BUNDLE_FETCH    45m 2s  exit 0   (chunked path, 3 parts)
+BUNDLE_PREPARE   7m 44s exit 0   (FASTA re-encoded BGZF, .fai + .gzi built)
+BUNDLE_VERIFY     26.6s exit 0   26/26 sha256 OK
+staged 30 GB   published outdir 1.9 MB
+```
+
+The published-outdir figure is the check on the `publishDir` fix: before it,
+download mode republished the whole 26 GB tree and cost double the disk.
+
+**Downloading a tree is not the same as the tree being usable**, so that is
+checked separately. Annotating the fixture against the downloaded tree — in
+`prestaged` mode so nothing can be re-fetched, and pointed at a different
+directory from the locally built one so a silent fallback would show — produces
+output **byte-identical** to the locally built tree, 11 rows x 190 columns,
+after normalising the sample id. What the mirror serves is functionally the
+bundle that was built, not merely one with matching checksums.
+
 ### End-to-end with shipped defaults
 
 Run on hephaestus with **no overrides** — exactly the config a user gets:
