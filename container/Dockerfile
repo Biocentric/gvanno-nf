@@ -4,18 +4,17 @@
 # 258 MB vs 1.5 GB, and it already provides /opt/vep/src/ensembl-vep/modules,
 # which is the path gvanno's get_loftee_dir() hardcodes.
 #
-# The gvanno helpers are fetched from GitHub at build time and patched here.
-# They are NOT vendored into this repository: sigven/gvanno carries no licence,
-# so redistributing its source is not ours to do. See README.md.
+# The gvanno helpers are vendored in container/gvanno-upstream/ (MIT, upstream
+# commit b25acdf) and patched at build time. See README.md.
 #
 #   docker build -t ghcr.io/biocentric/gvanno-nf:2026.1 container/
 
 FROM ensemblorg/ensembl-vep:release_115.2
 
-# Final upstream commit. One past the v1.7.0 tag; the only difference is
-# +1/-1 in download_gvanno_refdata.py, which we do not use, so the helpers are
-# byte-identical to the tag that sigven/gvanno:1.7.0 was built from.
-ARG GVANNO_COMMIT=379ee24247d1e7cac47884ac3b7488b6cfeccf7e
+# Pinned to the MIT-licence commit (b25acdf). Its only difference from the
+# previously pinned 379ee24 is LICENSE.md + CODE_OF_CONDUCT.md; src/gvanno/
+# is byte-identical, so behaviour matches what the v0.3.0 gates validated.
+ARG GVANNO_COMMIT=b25acdf4cedda081d11bbf89ac537615ae1b7c63
 ARG LOFTEE_SHA=a4f160e06f9b340759727bf538bf33c54ba4958370be34c7a0cb4a35c9008b62
 
 USER root
@@ -96,18 +95,24 @@ RUN cp /plugins/NearestExonJB.pm ${VEP_DIR}/modules/ \
 # ---------------------------------------------------------------------------
 # 4. The gvanno helpers: fetch pinned, apply our patches, install to /gvanno.
 # ---------------------------------------------------------------------------
+# Upstream is MIT-licensed as of b25acdf, so the source is VENDORED in this repo
+# rather than fetched at build time. That removes a network dependency and a
+# supply-chain surface from the build. Patches are still applied here rather
+# than pre-applied in the vendored tree, so the delta stays auditable.
+# LICENSE.md travels with the code -- MIT requires the notice to accompany copies.
+COPY gvanno-upstream/ /tmp/gvanno-src/
 COPY patches/ /tmp/patches/
-RUN curl -fsSL -o /tmp/gvanno.tgz \
-        "https://codeload.github.com/sigven/gvanno/tar.gz/${GVANNO_COMMIT}" \
-    && tar -xzf /tmp/gvanno.tgz -C /tmp \
-    && cd /tmp/gvanno-${GVANNO_COMMIT} \
+RUN cd /tmp/gvanno-src \
     && for p in /tmp/patches/*.patch; do \
-         echo "applying $(basename "$p")"; patch -p1 -F0 < "$p" || exit 1; \
+         echo "applying $(basename "$p")"; \
+         patch -p3 -F0 -i "$p" || exit 1; \
        done \
     && mkdir -p /gvanno \
-    && cp -r src/gvanno/. /gvanno/ \
+    && cp -r /tmp/gvanno-src/. /gvanno/ \
+    && rm -f /gvanno/README.md /gvanno/UPSTREAM_COMMIT \
     && chmod +x /gvanno/*.py \
-    && cd / && rm -rf /tmp/gvanno* /tmp/patches
+    && test -f /gvanno/LICENSE.md \
+    && cd / && rm -rf /tmp/gvanno-src /tmp/patches
 
 ENV PATH="/gvanno:${PATH}" \
     PYTHONPATH="/gvanno/lib:${PYTHONPATH}"

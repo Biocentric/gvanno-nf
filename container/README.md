@@ -1,53 +1,39 @@
 # gvanno-nf container (Track B, VEP 115)
 
-Builds `ghcr.io/biocentric/gvanno-nf:2026.1` — the gvanno helper scripts and
+Builds `ghcr.io/biocentric/gvanno-nf:2026.2` — the gvanno helper scripts and
 LOFTEE layered onto Ensembl's official VEP 115 image.
 
-## Why this is a patch series and not a vendored copy
+## Licence: MIT
 
-**`sigven/gvanno` carries no licence.** There is no `LICENSE` file at any
-commit, GitHub reports no licence for the repository, and the README does not
-state one. Under default copyright that means all rights reserved: the code may
-be read, but not redistributed or modified.
+`sigven/gvanno` is MIT-licensed as of
+[`b25acdf`](https://github.com/sigven/gvanno/commit/b25acdf4cedda081d11bbf89ac537615ae1b7c63)
+(2026-08-11) — Copyright © 2026 Sigve Nakken. Note the file is `LICENSE.md`,
+not `LICENSE`, so a naive `raw/.../LICENSE` probe 404s.
 
-So this directory does **not** contain a copy of upstream's code. It contains
-only our own patches. `build.sh` downloads the pinned upstream tarball from
-GitHub at build time, applies the patches, and bakes the result into the image
-— the same shape a distribution package uses. Our repository redistributes
-nothing that is not ours.
+The source is therefore **vendored** in [`gvanno-upstream/`](gvanno-upstream/),
+and `LICENSE.md` sits beside it and is copied into the image — MIT requires the
+notice to accompany copies, and the build asserts `test -f /gvanno/LICENSE.md`.
 
-That is a pragmatic mitigation, not a legal opinion.
+Patches are still applied at build time from [`patches/`](patches/) rather than
+pre-applied into the vendored tree, so the delta from upstream stays auditable
+as four small diffs. The build no longer fetches the helpers over the network,
+which removes a supply-chain surface and a build-time failure mode.
 
-> **Status (2026-08-10): Sigve Nakken has agreed in principle to add an MIT
-> licence to `sigven/gvanno`. The `LICENSE` file is not in the repository yet.**
->
-> Until it lands, treat this as intent rather than a grant. Two consequences:
->
-> - Development, local use and the private container image are unaffected —
->   they never depended on it.
-> - **Do not make the GHCR package public yet.** The image bakes the helper
->   scripts into a layer, so publishing it publicly is redistribution of
->   upstream's code. That is the one action worth holding.
->
-> Once the file appears: drop this section, vendor `src/gvanno/` at the pinned
-> commit, and delete the build-time fetch. The patch series exists only to
-> avoid redistributing unlicensed source, so it becomes unnecessary.
-
-Note this exposure is not new in Track B — `sigven/gvanno:1.7.0`, which
-v0.1.0 and v0.2.0 both pull at runtime, contains the same unlicensed code.
-Building our own image makes the question visible rather than creating it.
+> Before the licence existed this directory held only patches, and the
+> Dockerfile fetched upstream's tarball at build time to avoid redistributing
+> all-rights-reserved source. That indirection is gone.
 
 ## Upstream pin
 
 ```
-sigven/gvanno @ 379ee24247d1e7cac47884ac3b7488b6cfeccf7e   (2024-02-13, master HEAD)
+sigven/gvanno @ b25acdf4cedda081d11bbf89ac537615ae1b7c63   (2026-08-11, the MIT commit)
 ```
 
-That is the final upstream commit — the project has published nothing since.
-It is one commit past the `v1.7.0` tag, and the difference is `+1/-1` in
-`download_gvanno_refdata.py`, a file we do not use. **The helper scripts are
-byte-identical to the tag the `1.7.0` image was built from**, so the vendored
-behaviour matches what v0.2.0's gates validated.
+Re-pinned from `379ee24` when the licence landed. The only difference between
+them is `LICENSE.md` + `CODE_OF_CONDUCT.md` — **`src/gvanno/` is byte-identical**,
+so behaviour matches everything the v0.3.0 gates validated and no revalidation
+was owed. Confirmed empirically: `2026.2` produces byte-identical output to
+`2026.1` on the fixture.
 
 ## The patches
 
@@ -58,8 +44,9 @@ behaviour matches what v0.2.0's gates validated.
 | `lib_gvanno_vep.py.patch` | guards the inner `['SYMBOL']` key | The *outer* guard exists, but `make_transcript_xref_map` only creates an annotation key when the field is non-empty, so a transcript present in the map with a blank symbol raises `KeyError`. GENCODE 49 adds ~16k mostly unnamed loci. Line 233 already uses this pattern. |
 | `lib_gvanno_utils.py.patch` | `exit(0)` → propagate the real exit code | `check_subprocess()` swallowed **every** external failure — including `vep` itself, `vcfanno`, `bcftools`, `vt` — and exited 0. A failing VEP run was indistinguishable from success and Nextflow never saw it. |
 
-All four apply with `patch -p1 -F0` (zero fuzz) against the pinned tarball, and
-every patched file compiles.
+All four apply with `patch -p3 -F0` (zero fuzz) against the vendored tree — `-p3`
+because `gvanno-upstream/` is rooted at `src/gvanno/`, which the patch headers
+still name. Every patched file compiles.
 
 ## Base image
 
@@ -140,5 +127,7 @@ bash container/build.sh                  # builds locally
 bash container/build.sh --push           # also pushes to GHCR
 ```
 
-Pushing to GHCR needs a token with `write:packages`. The token currently on
-hephaestus has `gist, read:org, repo` only.
+Pushing to GHCR needs a token with `write:packages`; the token on hephaestus has
+it. Note there is **no REST endpoint** for changing package visibility — `PATCH
+/user/packages/container/<name>` 404s. It is UI-only:
+<https://github.com/users/Biocentric/packages/container/gvanno-nf/settings>.

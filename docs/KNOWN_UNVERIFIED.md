@@ -119,21 +119,19 @@ including 0.2.0 code with VEP 110 on GRCh37 (24 shards, 1250 rows,
 byte-identical), which mattered because every earlier run used 0.3.0 code with
 the VEP 115 container.
 
-### The GHCR package is private — and should stay private for now
+### The GHCR package is private — but the reason is gone
 
-Anonymous pulls return 403, so every `nextflow run` needs a registry login.
+Anonymous pulls return 403, so a registry login is still needed until the
+visibility is flipped.
 
-This is a GitHub visibility default, not a restriction anyone placed on us — we
-built and pushed the image. But **do not flip it to public yet**: the image
-bakes the gvanno helper scripts into a layer, and upstream has no `LICENSE`
-file, so publishing it publicly is redistribution of code that is formally
-all-rights-reserved.
+It was held private because the image bakes in gvanno helper scripts and
+upstream had no licence. **That is resolved**: `sigven/gvanno` is MIT as of
+`b25acdf` (2026-08-11), the source is now vendored, and `LICENSE.md` ships
+inside the image. Nothing blocks making it public.
 
-Sigve Nakken has agreed in principle (2026-08-10) to add MIT to
-`sigven/gvanno`. Once the file is actually in the repository, making the package
-public is fine — and the container's patch-series indirection can be replaced
-by simply vendoring the source. Until then a `docker login` on each of the two
-hosts is the cheaper trade.
+GitHub has **no REST endpoint** for package visibility — `PATCH
+/user/packages/container/gvanno-nf` returns 404 — so it is a UI-only action:
+<https://github.com/users/Biocentric/packages/container/gvanno-nf/settings>.
 
 ### `check_bundle.py` validates structure, not values
 

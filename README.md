@@ -83,32 +83,23 @@ samplesheet.csv ─► │  INPUT_CHECK         │
 
 Every process runs in a single container, `sigven/gvanno:1.7.0` — the same image upstream gvanno uses. There is nothing else to install.
 
-## ⚠️ The container is private
+## Container
 
-v0.3.0 runs on `ghcr.io/biocentric/gvanno-nf:2026.1`, which is a **private**
-GHCR package. Authenticate once per machine before the first run, or Nextflow
-fails at image pull:
+v0.3.0 runs on `ghcr.io/biocentric/gvanno-nf:2026.2` — Ensembl VEP 115 plus the
+MIT-licensed gvanno helpers, built from [`container/`](container/).
 
-```bash
-echo $GHCR_TOKEN | docker login ghcr.io -u Biocentric --password-stdin
-```
-
-(any token with `read:packages` will do; `gh auth token` works if the gh CLI is
-logged in with that scope).
-
-It is private deliberately, not by oversight. The image bakes the gvanno helper
-scripts into a layer, and upstream `sigven/gvanno` has no `LICENSE` file, so
-publishing it would redistribute code that is formally all-rights-reserved.
-Sigve Nakken has agreed in principle to add MIT; once that file exists the
-package can be made public and this step disappears. See
-[`container/README.md`](container/README.md).
-
-**To run without any registry login**, use v0.2.0 instead — it pulls the public
-`sigven/gvanno:1.7.0` and still carries the 2026 databases, just on VEP 110:
-
-```bash
-nextflow run Biocentric/gvanno-nf -r 0.2.0 -latest -profile docker ...
-```
+> **If the GHCR package is still private**, authenticate once per machine or
+> Nextflow fails at image pull:
+>
+> ```bash
+> echo $GHCR_TOKEN | docker login ghcr.io -u Biocentric --password-stdin
+> ```
+>
+> It was kept private while upstream `sigven/gvanno` had no licence, since the
+> image bakes those helpers into a layer. That is resolved — gvanno is MIT as of
+> [`b25acdf`](https://github.com/sigven/gvanno/commit/b25acdf4cedda081d11bbf89ac537615ae1b7c63)
+> — so the package can be made public, which is a UI-only setting:
+> <https://github.com/users/Biocentric/packages/container/gvanno-nf/settings>.
 
 ## Requirements
 
