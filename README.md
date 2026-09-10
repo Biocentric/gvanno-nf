@@ -18,7 +18,7 @@ A Nextflow (DSL2, nf-core style) pipeline for **functional and clinical annotati
 ## Status
 
 **v0.3.0** — Ensembl VEP 115. GENCODE v49, gnomAD v4.1 and dbSNP b156 now
-arrive via the rebuilt container (`ghcr.io/biocentric/gvanno-nf:2026.1`) with
+arrive via the rebuilt container (`ghcr.io/biocentric/gvanno-nf:2026.2`) with
 bundle `20260810`. On a 1,250-variant panel per assembly, ~30% more variants
 receive a population frequency and `gnomADg_AF` is populated for the first
 time. Both assemblies pass the Track B gate, with GRCh37 as the control arm

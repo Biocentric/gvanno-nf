@@ -11,7 +11,7 @@ advance the three resources that ride on the VEP cache rather than the bundle.
 | GENCODE (GRCh38) | v44 | **v49** |
 | gnomAD | r2.1 (2018) | **v4.1** |
 | dbSNP | b154 | **b156** |
-| container | `sigven/gvanno:1.7.0` | **`ghcr.io/biocentric/gvanno-nf:2026.1`** |
+| container | `sigven/gvanno:1.7.0` | **`ghcr.io/biocentric/gvanno-nf:2026.2`** |
 | bundle | `20260801` | **`20260810`** |
 
 GRCh37 stays on GENCODE 19 — Ensembl freezes it there — so its transcript set

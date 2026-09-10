@@ -5,14 +5,13 @@
 #   bash container/build.sh            build only
 #   bash container/build.sh --push     build and push to GHCR
 #
-# The image bakes in the gvanno helpers, fetched pinned from GitHub and patched
-# at build time — they are not vendored here, because sigven/gvanno carries no
-# licence. See README.md.
+# The image bakes in the gvanno helpers, vendored in gvanno-upstream/ (MIT,
+# upstream commit b25acdf) and patched at build time. See README.md.
 #
 set -uo pipefail
 
 IMAGE=${IMAGE:-ghcr.io/biocentric/gvanno-nf}
-TAG=${TAG:-2026.1}
+TAG=${TAG:-2026.2}
 PUSH=0
 [ "${1:-}" = "--push" ] && PUSH=1
 

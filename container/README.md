@@ -32,8 +32,9 @@ sigven/gvanno @ b25acdf4cedda081d11bbf89ac537615ae1b7c63   (2026-08-11, the MIT 
 Re-pinned from `379ee24` when the licence landed. The only difference between
 them is `LICENSE.md` + `CODE_OF_CONDUCT.md` — **`src/gvanno/` is byte-identical**,
 so behaviour matches everything the v0.3.0 gates validated and no revalidation
-was owed. Confirmed empirically: `2026.2` produces byte-identical output to
-`2026.1` on the fixture.
+was owed. Confirmed empirically rather than assumed: `2026.2` produces
+byte-identical output to `2026.1` on the 11-variant fixture and on the full
+1,250-variant GRCh37 panel (193 columns, all 1,250 rows).
 
 ## The patches
 

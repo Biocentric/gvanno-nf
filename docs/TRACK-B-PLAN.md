@@ -5,6 +5,13 @@ claims independently challenged. Facts marked **[V]** were verified against a
 primary source; where a refutation overturned a research finding, that is
 stated inline.
 
+> **As built.** This is the plan as written on 2026-08-01, kept unedited as a
+> record of the decisions. Two things changed in execution: the published tag
+> is **`2026.2`**, not the `2026.1` named in D4/B1 — `2026.1` was re-cut once
+> upstream added an MIT licence and the helpers could be vendored instead of
+> fetched at build time — and `--vep_lof_prediction` turned out to be dead
+> code (D3's LOFTEE is unconditional). Both are covered in `CHANGELOG.md`.
+
 ---
 
 ## 1. Bottom line

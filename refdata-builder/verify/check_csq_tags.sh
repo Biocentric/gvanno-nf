@@ -3,7 +3,7 @@
 # Diff the bundle's declared VEP tags against what VEP ACTUALLY emits.
 #
 #   usage: check_csq_tags.sh <container> <vep_cache_dir> <assembly> <vcf_infotags_vep.tsv>
-#   e.g.   check_csq_tags.sh ghcr.io/biocentric/gvanno-nf:2026.1 \
+#   e.g.   check_csq_tags.sh ghcr.io/biocentric/gvanno-nf:2026.2 \
 #              /mnt/big/gvanno-build/ref-trackb/data/grch38/.vep GRCh38 \
 #              refdata-builder/spec/vcf_infotags_vep.tsv
 #

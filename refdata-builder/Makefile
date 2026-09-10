@@ -76,7 +76,7 @@ clinvar: | $(OUTDIR)
 
 # Track B default. Using the VEP 110 image here silently runs the wrong VEP
 # against a 115 cache, which makes check_csq_tags report a meaningless diff.
-CONTAINER ?= ghcr.io/biocentric/gvanno-nf:2026.1
+CONTAINER ?= ghcr.io/biocentric/gvanno-nf:2026.2
 
 ## assemble — lift/transform/carry every donor resource into a bundle tree
 assemble:

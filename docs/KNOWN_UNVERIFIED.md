@@ -3,7 +3,7 @@
 Kept honest and current. If something here is stale, that is a bug.
 
 Last updated: **2026-08-10**, bundle `20260810`, container
-`ghcr.io/biocentric/gvanno-nf:2026.1` (VEP 115).
+`ghcr.io/biocentric/gvanno-nf:2026.2` (VEP 115).
 
 ---
 
@@ -50,7 +50,7 @@ manifest.
 ### End-to-end with shipped defaults
 
 Run on hephaestus with **no overrides** — exactly the config a user gets:
-`ghcr.io/biocentric/gvanno-nf:2026.1`, bundle `20260810`, 11-variant fixture.
+`ghcr.io/biocentric/gvanno-nf:2026.2`, bundle `20260810`, 11-variant fixture.
 8/8 processes, 190 columns × 11 rows, every variant resolved to the expected
 gene and protein change.
 
@@ -114,10 +114,19 @@ v0.1.0dev through v0.2.0 as a documented but unexercised feature.
 After the fix: 24 VEP / 24 VCFANNO / 24 SUMMARISE tasks, 1,250 rows, and output
 byte-identical to the unscattered run after sorting.
 
-Verified on **both assemblies** and on **both branches' own code paths** —
-including 0.2.0 code with VEP 110 on GRCh37 (24 shards, 1250 rows,
-byte-identical), which mattered because every earlier run used 0.3.0 code with
-the VEP 115 container.
+Verified across three cells of the assembly x branch matrix, each 24 shards /
+1250 rows / byte-identical after sorting:
+
+| Assembly | Code | Container | VEP |
+|---|---|---|---|
+| GRCh38 | 0.3.0 | `2026.1` | 115 |
+| GRCh37 | 0.2.0 | `sigven/gvanno:1.7.0` | 110 |
+| GRCh37 | 0.3.0 | `2026.2` | 115 |
+
+The 0.2.0 row mattered because every earlier run used 0.3.0 code with the VEP
+115 container, and the 2026.2 row because that is the tag the pipeline now
+defaults to. The remaining cell, GRCh38 x 0.2.0, is the combination the
+original bug was found on and so is the one already known to be fixed.
 
 ### The GHCR package is private — but the reason is gone
 

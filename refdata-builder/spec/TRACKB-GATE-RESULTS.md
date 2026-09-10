@@ -13,6 +13,13 @@ every variant is known to have been annotatable before the upgrade.
 Rows joined on **variant + gene**, not variant + transcript — GENCODE 44 → 49
 roughly doubles the transcript set, so `Feature` is precisely what moves.
 
+> **Arm B was run on `2026.1`; the shipped tag is `2026.2`.** The retag carries
+> the MIT licence and vendors the helpers instead of fetching them; `src/gvanno/`
+> is byte-identical between the two upstream commits. That equivalence is not
+> assumed — re-running this same GRCh37 panel under `2026.2` reproduces the
+> `2026.1` output byte-for-byte across all 1,250 rows and 193 columns, so this
+> gate result stands unchanged for the shipped image.
+
 ## Result: PASSED on both assemblies
 
 ### GRCh37 is the control arm, and it is the load-bearing result
