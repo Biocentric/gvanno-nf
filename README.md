@@ -88,18 +88,12 @@ Every process runs in a single container, `sigven/gvanno:1.7.0` — the same ima
 v0.3.0 runs on `ghcr.io/biocentric/gvanno-nf:2026.2` — Ensembl VEP 115 plus the
 MIT-licensed gvanno helpers, built from [`container/`](container/).
 
-> **If the GHCR package is still private**, authenticate once per machine or
-> Nextflow fails at image pull:
->
-> ```bash
-> echo $GHCR_TOKEN | docker login ghcr.io -u Biocentric --password-stdin
-> ```
->
-> It was kept private while upstream `sigven/gvanno` had no licence, since the
-> image bakes those helpers into a layer. That is resolved — gvanno is MIT as of
-> [`b25acdf`](https://github.com/sigven/gvanno/commit/b25acdf4cedda081d11bbf89ac537615ae1b7c63)
-> — so the package can be made public, which is a UI-only setting:
-> <https://github.com/users/Biocentric/packages/container/gvanno-nf/settings>.
+It is **public** — no registry login, Nextflow pulls it unauthenticated.
+
+It was private up to 2026-09-10, while upstream `sigven/gvanno` had no licence
+and the image bakes those helpers into a layer. That is resolved: gvanno is MIT
+as of [`b25acdf`](https://github.com/sigven/gvanno/commit/b25acdf4cedda081d11bbf89ac537615ae1b7c63),
+the source is vendored, and `LICENSE.md` ships inside the image.
 
 ## Requirements
 

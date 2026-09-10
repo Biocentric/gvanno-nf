@@ -148,19 +148,21 @@ The 0.2.0 row mattered because every earlier run used 0.3.0 code with the VEP
 defaults to. The remaining cell, GRCh38 x 0.2.0, is the combination the
 original bug was found on and so is the one already known to be fixed.
 
-### The GHCR package is private — but the reason is gone
+### ~~The GHCR package is private~~ — public as of 2026-09-10
 
-Anonymous pulls return 403, so a registry login is still needed until the
-visibility is flipped.
+Verified by a genuine anonymous pull: no credential in `~/.docker/config.json`,
+`docker logout ghcr.io` first, local copy removed so the registry had to serve
+it. Digest `sha256:ad29559d…` matches the published `2026.2`.
+
+Worth recording how *not* to test this. A bare
+`curl https://ghcr.io/v2/<pkg>/manifests/<tag>` returns **401 whether the
+package is public or private** — that is the registry's normal auth challenge,
+not a permission denial. The meaningful check is whether an anonymous token
+from `ghcr.io/token?scope=repository:<pkg>:pull` is issued *and works*.
 
 It was held private because the image bakes in gvanno helper scripts and
-upstream had no licence. **That is resolved**: `sigven/gvanno` is MIT as of
-`b25acdf` (2026-08-11), the source is now vendored, and `LICENSE.md` ships
-inside the image. Nothing blocks making it public.
-
-GitHub has **no REST endpoint** for package visibility — `PATCH
-/user/packages/container/gvanno-nf` returns 404 — so it is a UI-only action:
-<https://github.com/users/Biocentric/packages/container/gvanno-nf/settings>.
+upstream had no licence. `sigven/gvanno` is MIT as of `b25acdf` (2026-08-11),
+the source is vendored, and `LICENSE.md` ships inside the image.
 
 ### `check_bundle.py` validates structure, not values
 

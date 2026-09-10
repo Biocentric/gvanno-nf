@@ -12,17 +12,11 @@ patientB,/data/B.vcf.gz,
 - `vcf` — path to a single-sample germline VCF (≥ v4.2).
 - `vcf_index` — optional and ignored. `VALIDATE_VCF` re-normalises and re-indexes every input, so a pre-existing index is never used; plain uncompressed `.vcf` inputs are fine.
 
-## Container registry login (v0.3.0 only)
+## Container
 
-v0.3.0 uses a private GHCR image, so authenticate once per machine before the
-first run:
-
-```bash
-echo $GHCR_TOKEN | docker login ghcr.io -u Biocentric --password-stdin
-```
-
-Without it Nextflow fails on the first process with a pull error. v0.2.0 needs
-no login — it uses the public `sigven/gvanno:1.7.0`. Rationale in the README.
+Both images are public and pull without credentials — v0.3.0's
+`ghcr.io/biocentric/gvanno-nf:2026.2`, and v0.2.0's `sigven/gvanno:1.7.0` from
+Docker Hub. No `docker login` step.
 
 ## Reference data (one-off setup)
 

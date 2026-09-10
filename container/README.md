@@ -129,6 +129,8 @@ bash container/build.sh --push           # also pushes to GHCR
 ```
 
 Pushing to GHCR needs a token with `write:packages`; the token on hephaestus has
-it. Note there is **no REST endpoint** for changing package visibility — `PATCH
-/user/packages/container/<name>` 404s. It is UI-only:
+it. Pulling needs nothing — the package is public as of 2026-09-10.
+
+Making it public was UI-only: GitHub has **no REST endpoint** for package
+visibility, `PATCH /user/packages/container/<name>` 404s. The setting is at
 <https://github.com/users/Biocentric/packages/container/gvanno-nf/settings>.

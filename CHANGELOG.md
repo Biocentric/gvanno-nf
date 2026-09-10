@@ -122,9 +122,8 @@ gvanno.databundle.grch37.20260810.tgz  4.64 GB
 
 Verified consumable: direct URLs 404 by design, all six chunks resolve, manifests present.
 
-> **The GHCR package is private.** Until it is made public at
-> `github.com/orgs/Biocentric/packages`, every `nextflow run` needs a registry
-> login.
+The GHCR package is **public** (made so 2026-09-10) — `nextflow run` pulls the
+image with no registry login.
 
 ## v0.2.0 — 2026 annotation databases (2026-08-01)
 
